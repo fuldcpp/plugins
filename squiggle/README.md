@@ -42,7 +42,8 @@ restart is needed.
 
 ## Installing
 
-Download `Squiggle.dcext` from [Releases](../../releases), then
+Download `Squiggle.dcext` from
+[Releases](https://github.com/fuldcpp/plugins/releases), then
 **Settings → Plugins → Add**.
 
 > Put the file in a folder whose path has no accented characters. FulDC++ 1.08

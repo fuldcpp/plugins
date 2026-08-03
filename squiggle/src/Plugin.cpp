@@ -35,7 +35,7 @@ const char* const kDescriptionSv =
 const char* const kDescriptionEn =
     "Spell checking in chat: a red wavy underline under misspelled words as you "
     "type, right-click for suggestions. Several languages at once.";
-const char* const kWeb = "https://github.com/kaje-home/Squiggle";
+const char* const kWeb = "https://github.com/fuldcpp/plugins/tree/main/squiggle";
 
 HINSTANCE g_instance = nullptr;
 DCHooksPtr g_hooks = nullptr;
@@ -304,7 +304,7 @@ extern "C" DCEXP DCMAIN DCAPI pluginInit(MetaDataPtr info) {
     info->dependencies = nullptr;
     info->numDependencies = 0;
     info->apiVersion = DCAPI_CORE_VER;
-    info->version = 2.3;
+    info->version = 2.4;
 
     return PluginMain;
 }

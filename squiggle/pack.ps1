@@ -17,7 +17,7 @@ $srcMatch   = Select-String -Path (Join-Path $root 'src\Plugin.cpp') -Pattern 'i
 if (-not $srcMatch) { throw "Hittade ingen info->version i Plugin.cpp" }
 $srcVersion = $srcMatch.Matches[0].Groups[1].Value.TrimEnd('.')
 
-# info.xml sager "2.3", resursen "2.3.0.0" - jamfor de tva forsta delarna.
+# info.xml sager t.ex. "2.4", resursen "2.4.0.0" - jamfor de tva forsta delarna.
 function Short([string]$v) { ($v -split '\.')[0..1] -join '.' }
 
 if ((Short $dllVersion) -ne (Short $xmlVersion)) {
