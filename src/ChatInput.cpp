@@ -18,8 +18,10 @@
 #include <windowsx.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cwctype>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -42,9 +44,36 @@ constexpr UINT kCmdIgnore = 0x7001;
 constexpr int kSquiggleAmplitude = 2;
 constexpr int kSquiggleStep = 2;  // half a period
 
+// Runs a task posted from another thread. wParam is the function to call.
+constexpr UINT kMsgRunTask = WM_APP + 0x51;
+
 HINSTANCE g_instance = nullptr;
 Speller* g_speller = nullptr;
 HHOOK g_hook = nullptr;
+
+// Set once the hook is installed, from whichever thread installed it, and read
+// from the host's timer thread; the mutex covers installation itself.
+std::mutex g_installMutex;
+std::atomic<DWORD> g_guiThread{0};
+
+// A message-only window living on the GUI thread. It is what makes it possible
+// to answer the host's timer -- which fires on the TimerManager thread -- without
+// touching a single window, subclass context or COM object from there.
+std::atomic<HWND> g_relay{nullptr};
+
+// GUI thread only. Keeps the hook from retrying window creation on every single
+// message once it has failed, and is reset by an uninstall so a later install
+// starts over.
+bool g_relayAttempted = false;
+
+// Every control we subclassed, in the order they were attached. Only ever
+// touched on the GUI thread. Keeping the list explicitly is what lets Uninstall
+// find them again: re-walking the window tree fails exactly when it matters, at
+// shutdown, when the frames are already gone or hidden.
+std::vector<HWND>& Attached() {
+    static std::vector<HWND> attached;
+    return attached;
+}
 
 // The most recent automatic replacement, kept so Ctrl+Z can put the original
 // word back. The edit control's own undo buffer is only one level deep and the
@@ -83,9 +112,25 @@ std::wstring TextOf(HWND hwnd) {
 // Checking
 // ---------------------------------------------------------------------------
 
+struct Selection {
+    int start = 0;
+    int end = 0;
+
+    bool empty() const { return start == end; }
+};
+
+// The pointer form of EM_GETSEL, not the packed return value: that one is two
+// 16-bit halves, so everything past the 65535th character comes back wrapped.
+Selection SelectionOf(HWND hwnd) {
+    DWORD start = 0;
+    DWORD end = 0;
+    ::SendMessageW(hwnd, EM_GETSEL, reinterpret_cast<WPARAM>(&start),
+                   reinterpret_cast<LPARAM>(&end));
+    return Selection{static_cast<int>(start), static_cast<int>(end)};
+}
+
 int CaretPos(HWND hwnd) {
-    const DWORD sel = static_cast<DWORD>(::SendMessageW(hwnd, EM_GETSEL, 0, 0));
-    return static_cast<int>(HIWORD(sel));
+    return SelectionOf(hwnd).end;
 }
 
 // caretPos suppresses the word currently being typed: a squiggle that appears
@@ -116,7 +161,7 @@ void EnsureSpellerReady() {
     g_speller->RefreshLanguages();
 }
 
-std::vector<Range> FindMisspellings(const std::wstring& text, int caretPos) {
+std::vector<Range> FindMisspellings(HWND hwnd, const std::wstring& text, int caretPos) {
     std::vector<Range> bad;
 
     EnsureSpellerReady();
@@ -126,7 +171,7 @@ std::vector<Range> FindMisspellings(const std::wstring& text, int caretPos) {
         if (r.end() == caretPos) continue;
 
         const std::wstring word = Slice(text, r);
-        if (Nicks::Contains(word)) continue;
+        if (Nicks::Contains(hwnd, word)) continue;
         if (!g_speller->IsCorrect(word)) bad.push_back(r);
     }
     return bad;
@@ -141,7 +186,7 @@ std::vector<Range> FindMisspellings(const std::wstring& text, int caretPos) {
 // right characters as the text shifts around them.
 bool Recheck(HWND hwnd, Context& ctx) {
     std::wstring text = TextOf(hwnd);
-    std::vector<Range> bad = FindMisspellings(text, CaretPos(hwnd));
+    std::vector<Range> bad = FindMisspellings(hwnd, text, CaretPos(hwnd));
 
     const bool changed = (bad != ctx.bad);
     ctx.checkedText = std::move(text);
@@ -293,11 +338,11 @@ void ApplyAutoCorrect(HWND hwnd, Context& ctx) {
 
     // Never touch the text while something is selected: the replacement would
     // silently eat the selection.
-    const DWORD sel = static_cast<DWORD>(::SendMessageW(hwnd, EM_GETSEL, 0, 0));
-    if (LOWORD(sel) != HIWORD(sel)) return;
+    const Selection sel = SelectionOf(hwnd);
+    if (!sel.empty()) return;
 
     const std::wstring text = TextOf(hwnd);
-    const int caret = static_cast<int>(HIWORD(sel));
+    const int caret = sel.end;
     if (caret <= 0 || caret > static_cast<int>(text.size())) return;
 
     int start = caret;
@@ -422,6 +467,9 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     switch (msg) {
         case WM_NCDESTROY: {
             ::RemoveWindowSubclass(hwnd, EditProc, id);
+            std::vector<HWND>& attached = Attached();
+            attached.erase(std::remove(attached.begin(), attached.end(), hwnd), attached.end());
+            Nicks::Forget(hwnd);
             delete ctx;
             return ::DefSubclassProc(hwnd, msg, wParam, lParam);
         }
@@ -429,7 +477,12 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
         case WM_PAINT: {
             const LRESULT result = ::DefSubclassProc(hwnd, msg, wParam, lParam);
             if (ctx && !ctx->bad.empty()) {
-                if (HDC hdc = ::GetDC(hwnd)) {
+                // A non-null wParam is a device context the caller wants painted
+                // into; drawing to our own would put the squiggles on the screen
+                // instead of on whatever surface was asked for.
+                if (HDC provided = reinterpret_cast<HDC>(wParam)) {
+                    DrawSquiggles(hwnd, provided, *ctx);
+                } else if (HDC hdc = ::GetDC(hwnd)) {
                     DrawSquiggles(hwnd, hdc, *ctx);
                     ::ReleaseDC(hwnd, hdc);
                 }
@@ -452,8 +505,8 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
             POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
             if (pt.x == -1 && pt.y == -1) {
                 // Keyboard-invoked: anchor on the caret.
-                const DWORD sel = static_cast<DWORD>(::SendMessageW(hwnd, EM_GETSEL, 0, 0));
-                const LRESULT p = ::SendMessageW(hwnd, EM_POSFROMCHAR, HIWORD(sel), 0);
+                const LRESULT p = ::SendMessageW(hwnd, EM_POSFROMCHAR,
+                                                 static_cast<WPARAM>(SelectionOf(hwnd).end), 0);
                 pt.x = (p == -1) ? 0 : static_cast<short>(LOWORD(p));
                 pt.y = (p == -1) ? 0 : static_cast<short>(HIWORD(p));
                 ::ClientToScreen(hwnd, &pt);
@@ -479,7 +532,9 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
         }
 
         case WM_KEYDOWN: {
-            if (ctx && wParam == 'Z' && (::GetKeyState(VK_CONTROL) & 0x8000)) {
+            // Ctrl+Shift+Z is redo, and must be left to the control.
+            if (ctx && wParam == 'Z' && (::GetKeyState(VK_CONTROL) & 0x8000) &&
+                !(::GetKeyState(VK_SHIFT) & 0x8000)) {
                 if (UndoAutoCorrect(hwnd, *ctx)) {
                     RefreshAfterEdit(hwnd, *ctx);
                     return 0;
@@ -538,6 +593,14 @@ bool LooksLikeChatInput(HWND hwnd) {
     if (!(style & ES_MULTILINE)) return false;
     if (style & ES_READONLY) return false;
 
+    // A dialog is never chat. This plugin's own settings window has two
+    // multiline edit boxes -- the personal word list and the autocorrect rules --
+    // and squiggling those, or autocorrecting a rule as it is being typed, is
+    // absurd. Host dialogs have multiline fields for descriptions and commands
+    // for much the same reason.
+    const HWND root = ::GetAncestor(hwnd, GA_ROOT);
+    if (root && ClassOf(root) == L"#32770") return false;
+
     return true;
 }
 
@@ -551,13 +614,142 @@ void MaybeAttach(HWND hwnd) {
     auto ctx = std::make_unique<Context>();
     if (::SetWindowSubclass(hwnd, EditProc, kSubclassId, reinterpret_cast<DWORD_PTR>(ctx.get()))) {
         Context* raw = ctx.release();
+        Attached().push_back(hwnd);
         Nicks::HarvestFrom(hwnd);
         Recheck(hwnd, *raw);
     }
 }
 
+// Walks the existing window tree once, so controls that are already up get
+// picked up without waiting for the user to click around. Runs on the GUI
+// thread: subclassing a window from any other thread is not supported.
+void AttachExisting() {
+    ::EnumThreadWindows(
+        ::GetCurrentThreadId(),
+        [](HWND top, LPARAM) -> BOOL {
+            ::EnumChildWindows(
+                top,
+                [](HWND child, LPARAM) -> BOOL {
+                    MaybeAttach(child);
+                    return TRUE;
+                },
+                0);
+            return TRUE;
+        },
+        0);
+}
+
+void DetachAll() {
+    // Copied because WM_NCDESTROY may still fire during this and would edit the
+    // list from underneath the loop.
+    const std::vector<HWND> attached = Attached();
+    Attached().clear();
+
+    for (HWND hwnd : attached) {
+        if (!::IsWindow(hwnd)) continue;
+
+        DWORD_PTR ref = 0;
+        if (!::GetWindowSubclass(hwnd, EditProc, kSubclassId, &ref)) continue;
+
+        ::RemoveWindowSubclass(hwnd, EditProc, kSubclassId);
+        Nicks::Forget(hwnd);
+        delete reinterpret_cast<Context*>(ref);
+        ::InvalidateRect(hwnd, nullptr, TRUE);
+    }
+}
+
+// Everything below runs on the GUI thread, either because the hook put it there
+// or because it was posted to the relay window.
+
+// The class name carries the module handle, so a registration left behind by an
+// earlier load of this DLL can never be picked up by a later one: the window
+// procedure in it points into a mapping that is no longer there. When the name
+// does already exist it belongs to this same mapping -- unloaded and reloaded
+// without being unmapped -- and reusing it is correct.
+const std::wstring& RelayClass() {
+    static const std::wstring name = [] {
+        wchar_t buf[64] = {};
+        ::wsprintfW(buf, L"SquiggleRelay_%p", static_cast<void*>(g_instance));
+        return std::wstring(buf);
+    }();
+    return name;
+}
+
+void UninstallOnGui() {
+    std::lock_guard<std::mutex> lock(g_installMutex);
+
+    if (g_hook) {
+        ::UnhookWindowsHookEx(g_hook);
+        g_hook = nullptr;
+    }
+
+    DetachAll();
+
+    if (HWND relay = g_relay.exchange(nullptr)) {
+        ::DestroyWindow(relay);
+        // The class holds a pointer into this module; leaving it registered
+        // after an unload leaves the name bound to code that is no longer there.
+        ::UnregisterClassW(RelayClass().c_str(), g_instance);
+    }
+    g_relayAttempted = false;
+
+    g_guiThread.store(0);
+}
+
+void InvalidateAllOnGui() {
+    for (HWND hwnd : Attached()) {
+        DWORD_PTR ref = 0;
+        if (!::GetWindowSubclass(hwnd, EditProc, kSubclassId, &ref)) continue;
+
+        auto* ctx = reinterpret_cast<Context*>(ref);
+        Recheck(hwnd, *ctx);
+        ::InvalidateRect(hwnd, nullptr, TRUE);
+    }
+}
+
+LRESULT CALLBACK RelayProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (msg == kMsgRunTask) {
+        if (auto task = reinterpret_cast<void (*)()>(wParam)) task();
+        return 0;
+    }
+    return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+// Created lazily from inside the hook, which is the first code of ours that is
+// guaranteed to be running on the GUI thread.
+void EnsureRelayWindow() {
+    if (g_relay.load()) return;
+
+    // Only ever attempted once per install: a message-only window does not fail
+    // to be created for a reason that goes away by trying again on the next
+    // message, and this runs on every message the GUI thread handles.
+    if (g_relayAttempted) return;
+    g_relayAttempted = true;
+
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(wc);
+    wc.lpfnWndProc = RelayProc;
+    wc.hInstance = g_instance;
+    wc.lpszClassName = RelayClass().c_str();
+    if (!::RegisterClassExW(&wc) && ::GetLastError() != ERROR_CLASS_ALREADY_EXISTS) return;
+
+    HWND relay = ::CreateWindowExW(0, RelayClass().c_str(), nullptr, 0, 0, 0, 0, 0, HWND_MESSAGE,
+                                   nullptr, g_instance, nullptr);
+    if (!relay) return;
+
+    g_relay.store(relay);
+    AttachExisting();
+}
+
 LRESULT CALLBACK CallWndProc(int code, WPARAM wParam, LPARAM lParam) {
     if (code == HC_ACTION) {
+        EnsureRelayWindow();
+
+        // Nothing is subclassed unless the relay is up, so that "something is
+        // attached" always implies "there is a way to reach the GUI thread and
+        // detach it again".
+        if (!g_relay.load()) return ::CallNextHookEx(nullptr, code, wParam, lParam);
+
         const CWPSTRUCT* cwp = reinterpret_cast<const CWPSTRUCT*>(lParam);
         // WM_SETFOCUS is the first moment the control is guaranteed to be fully
         // built and parented, which WM_CREATE is not.
@@ -592,24 +784,6 @@ DWORD FindGuiThread() {
     return search.thread;
 }
 
-// Walks the existing window tree once at install time, so controls that already
-// have focus get picked up without waiting for the user to click around.
-void AttachExisting(DWORD threadId) {
-    ::EnumThreadWindows(
-        threadId,
-        [](HWND top, LPARAM) -> BOOL {
-            ::EnumChildWindows(
-                top,
-                [](HWND child, LPARAM) -> BOOL {
-                    MaybeAttach(child);
-                    return TRUE;
-                },
-                0);
-            return TRUE;
-        },
-        0);
-}
-
 }  // namespace
 
 void SetModule(HINSTANCE instance) {
@@ -621,70 +795,58 @@ void SetSpeller(Speller* speller) {
 }
 
 bool EnsureInstalled() {
+    // Called once at load and then once a second from the host's timer thread
+    // until it succeeds, so it has to tolerate being raced.
+    std::lock_guard<std::mutex> lock(g_installMutex);
     if (g_hook) return true;
 
     const DWORD thread = FindGuiThread();
     if (thread == 0) return false;
 
+    // Installing a hook for another thread is allowed; subclassing that thread's
+    // windows is not, so no attaching happens here. The hook itself is the first
+    // thing of ours to run on the GUI thread, and that is where it is done.
     g_hook = ::SetWindowsHookExW(WH_CALLWNDPROC, CallWndProc, g_instance, thread);
     if (!g_hook) return false;
 
-    AttachExisting(thread);
+    g_guiThread.store(thread);
     return true;
 }
 
-void Uninstall() {
-    if (g_hook) {
-        ::UnhookWindowsHookEx(g_hook);
-        g_hook = nullptr;
+bool RunOnGui(void (*task)(), bool blocking) {
+    if (!task) return false;
+
+    const HWND relay = g_relay.load();
+    if (!relay) return false;
+
+    if (::GetCurrentThreadId() == g_guiThread.load()) {
+        task();
+        return true;
     }
 
-    // Detach from whatever is still alive; each control frees its own context.
-    const DWORD thread = FindGuiThread();
-    if (thread == 0) return;
+    const WPARAM packed = reinterpret_cast<WPARAM>(task);
+    if (blocking) {
+        ::SendMessageW(relay, kMsgRunTask, packed, 0);
+        return true;
+    }
+    return ::PostMessageW(relay, kMsgRunTask, packed, 0) != FALSE;
+}
 
-    ::EnumThreadWindows(
-        thread,
-        [](HWND top, LPARAM) -> BOOL {
-            ::EnumChildWindows(
-                top,
-                [](HWND child, LPARAM) -> BOOL {
-                    DWORD_PTR ref = 0;
-                    if (::GetWindowSubclass(child, EditProc, kSubclassId, &ref)) {
-                        ::RemoveWindowSubclass(child, EditProc, kSubclassId);
-                        delete reinterpret_cast<Context*>(ref);
-                        ::InvalidateRect(child, nullptr, TRUE);
-                    }
-                    return TRUE;
-                },
-                0);
-            return TRUE;
-        },
-        0);
+void Uninstall() {
+    // Detaching has to happen on the thread that owns the controls, and it has
+    // to happen before this module is unloaded: a subclass left in place is a
+    // window proc pointing into freed code.
+    if (RunOnGui(&UninstallOnGui, /*blocking=*/true)) return;
+
+    // No relay window, which means the hook never got as far as running on the
+    // GUI thread and nothing was ever subclassed. Dropping the hook is all that
+    // is left to do.
+    UninstallOnGui();
 }
 
 void InvalidateAll() {
-    const DWORD thread = FindGuiThread();
-    if (thread == 0) return;
-
-    ::EnumThreadWindows(
-        thread,
-        [](HWND top, LPARAM) -> BOOL {
-            ::EnumChildWindows(
-                top,
-                [](HWND child, LPARAM) -> BOOL {
-                    DWORD_PTR ref = 0;
-                    if (::GetWindowSubclass(child, EditProc, kSubclassId, &ref)) {
-                        auto* ctx = reinterpret_cast<Context*>(ref);
-                        Recheck(child, *ctx);
-                        ::InvalidateRect(child, nullptr, TRUE);
-                    }
-                    return TRUE;
-                },
-                0);
-            return TRUE;
-        },
-        0);
+    if (RunOnGui(&InvalidateAllOnGui, /*blocking=*/true)) return;
+    if (::GetCurrentThreadId() == g_guiThread.load()) InvalidateAllOnGui();
 }
 
 }  // namespace ChatInput

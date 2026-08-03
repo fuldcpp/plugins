@@ -9,6 +9,8 @@
 
 #include <windows.h>
 
+#include <atomic>
+#include <cwctype>
 #include <string>
 #include <vector>
 
@@ -33,7 +35,7 @@ const char* const kDescriptionSv =
 const char* const kDescriptionEn =
     "Spell checking in chat: a red wavy underline under misspelled words as you "
     "type, right-click for suggestions. Several languages at once.";
-const char* const kWeb = "";
+const char* const kWeb = "https://github.com/kaje-home/Squiggle";
 
 HINSTANCE g_instance = nullptr;
 DCHooksPtr g_hooks = nullptr;
@@ -42,7 +44,9 @@ DCConfigPtr g_config = nullptr;
 subsHandle g_timerSub = nullptr;
 subsHandle g_uiSub = nullptr;
 Speller g_speller;
-bool g_installed = false;
+
+// Written from the host's timer thread as well as at load time.
+std::atomic<bool> g_installed{false};
 
 void Log(const std::string& message) {
     if (g_log && g_log->log) g_log->log(("Squiggle: " + message).c_str());
@@ -74,10 +78,35 @@ void MigrateFile(const wchar_t* oldName, const wchar_t* newName) {
     ::MoveFileW(from.c_str(), to.c_str());
 }
 
+// DCConfig::get_language is not part of the plugin API every DCAPI 8 host was
+// built against. FulDC++ has it; stock DC++ and its other forks do not, and both
+// report DCINTF_CONFIG_VER 1, so the version check cannot tell them apart.
+// Reading the slot on a host that lacks it lands on whatever field follows in
+// that host's own struct -- a real, non-null function pointer -- and calling it
+// jumps into unrelated code with a garbage argument.
+//
+// Nothing in the interface distinguishes them, so the host is identified by its
+// own module instead. Anything unrecognised simply never touches the field and
+// falls back to the Windows UI language, which is what stock DC++ users would
+// want anyway; the explicit choice in the settings dialog overrides either way.
+bool HostHasLanguageQuery() {
+    wchar_t path[MAX_PATH] = {};
+    const DWORD len = ::GetModuleFileNameW(nullptr, path, MAX_PATH);
+    if (len == 0 || len >= MAX_PATH) return false;
+
+    std::wstring exe(path, len);
+    const size_t slash = exe.find_last_of(L"\\/");
+    if (slash != std::wstring::npos) exe.erase(0, slash + 1);
+    for (wchar_t& c : exe) c = static_cast<wchar_t>(::towlower(static_cast<wint_t>(c)));
+
+    // FulDC++ and the AirDC++ tree it is built from; both carry get_language.
+    return exe.rfind(L"fuldc", 0) == 0 || exe.rfind(L"airdc", 0) == 0;
+}
+
 // Asks the host what language it is running in, then lets any explicit user
 // choice win over that.
 void ApplyInterfaceLanguage() {
-    if (g_config && g_config->get_language) {
+    if (g_config && HostHasLanguageQuery() && g_config->get_language) {
         ConfigStrPtr tag = g_config->get_language();
         Strings::DetectLanguage(tag ? tag->value : nullptr);
         if (tag && g_config->release) {
@@ -100,10 +129,26 @@ void LogActiveLanguages() {
     Log(langs.empty() ? "inga sprak aktiva" : "aktiva sprak: " + langs);
 }
 
+// Picks up a language installed in Windows after the client started. Runs on the
+// GUI thread, posted there from the timer hook.
+void RefreshLanguagesOnGui() {
+    if (g_speller.MissingLanguages().empty()) return;
+    if (!g_speller.RefreshLanguages()) return;
+
+    LogActiveLanguages();
+    ChatInput::InvalidateAll();
+}
+
 // Discovery has to be retried: at ON_LOAD the host's windows do not exist yet,
 // and hub frames appear later as the user connects. The language check is
 // retried too, so a language installed in Windows while the client is running
 // starts working without a restart.
+//
+// This fires on the host's TimerManager thread, not the GUI thread. Nothing here
+// may touch the speller, a subclassed control or its context directly: the
+// speller has no locking, and its checkers are apartment-threaded COM objects
+// that belong to the GUI thread. Installing the hook is the one exception, and
+// it deliberately does no subclassing of its own.
 Bool DCAPI OnTimer(dcptr_t, dcptr_t, dcptr_t, Bool*) {
     if (!g_installed) {
         g_installed = ChatInput::EnsureInstalled();
@@ -111,12 +156,9 @@ Bool DCAPI OnTimer(dcptr_t, dcptr_t, dcptr_t, Bool*) {
     }
 
     static int ticks = 0;
-    if (++ticks >= 30 && !g_speller.MissingLanguages().empty()) {
+    if (++ticks >= 30) {
         ticks = 0;
-        if (g_speller.RefreshLanguages()) {
-            LogActiveLanguages();
-            ChatInput::InvalidateAll();
-        }
+        ChatInput::RunOnGui(&RefreshLanguagesOnGui);
     }
 
     return True;
@@ -176,6 +218,10 @@ bool Startup(DCCorePtr core) {
     return true;
 }
 
+void ShutdownSpellerOnGui() {
+    g_speller.Shutdown();
+}
+
 void Teardown() {
     if (g_hooks) {
         if (g_timerSub) g_hooks->release_hook(g_timerSub);
@@ -184,14 +230,23 @@ void Teardown() {
     g_timerSub = nullptr;
     g_uiSub = nullptr;
 
+    // The checkers are apartment-threaded COM objects belonging to the GUI
+    // thread, so they have to be released from there -- and before
+    // ChatInput::Uninstall, which takes down the only route to that thread.
+    if (!ChatInput::RunOnGui(&ShutdownSpellerOnGui, /*blocking=*/true)) g_speller.Shutdown();
+
     ChatInput::Uninstall();
     ChatInput::SetSpeller(nullptr);
     Nicks::Clear();
-    g_speller.Shutdown();
 
     g_installed = false;
     g_hooks = nullptr;
     g_log = nullptr;
+
+    // The host's config interface goes away with the plugin; leaving the pointer
+    // bound means a later Save() calls through it.
+    Settings::Bind(nullptr, nullptr);
+    g_config = nullptr;
 }
 
 void ShowConfiguration() {

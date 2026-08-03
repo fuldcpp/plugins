@@ -10,6 +10,7 @@
 #include <windows.h>
 
 #include "Strings.h"
+#include "Text.h"
 #include "TextFile.h"
 
 #include <algorithm>
@@ -41,10 +42,7 @@ std::unordered_set<std::wstring> g_suppressed;
 std::wstring g_path;
 
 std::wstring Fold(const std::wstring& s) {
-    std::wstring out = s;
-    std::transform(out.begin(), out.end(), out.begin(),
-                   [](wchar_t c) { return static_cast<wchar_t>(std::towlower(static_cast<wint_t>(c))); });
-    return out;
+    return Text::Fold(s);
 }
 
 void Trim(std::wstring& s) {
@@ -110,17 +108,11 @@ std::wstring MatchCase(const std::wstring& typed, const std::wstring& replacemen
         typed.size() > 1 && std::none_of(typed.begin(), typed.end(), [](wchar_t c) {
             return std::iswlower(static_cast<wint_t>(c)) != 0;
         });
-    if (allUpper) {
-        std::wstring out = replacement;
-        std::transform(out.begin(), out.end(), out.begin(), [](wchar_t c) {
-            return static_cast<wchar_t>(std::towupper(static_cast<wint_t>(c)));
-        });
-        return out;
-    }
+    if (allUpper) return Text::Upper(replacement);
 
     if (std::iswupper(static_cast<wint_t>(typed.front()))) {
         std::wstring out = replacement;
-        out.front() = static_cast<wchar_t>(std::towupper(static_cast<wint_t>(out.front())));
+        out.replace(0, 1, Text::Upper(out.substr(0, 1)));
         return out;
     }
 

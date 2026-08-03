@@ -76,6 +76,12 @@ with `/`.
 
 Every nickname in the hub's user list is skipped too, including the alphabetic
 parts of decorated nicks: `[SE]Pelle_42` also makes a bare `Pelle` acceptable.
+Names count only in the hub they belong to — pooling every hub's user list
+together would mean one person called `sedan` somewhere silently switching that
+word off everywhere else.
+
+Only chat message boxes are touched. Multiline edit fields that belong to a
+dialog are left alone, including the two in Squiggle's own settings window.
 
 ## Autocorrect
 
@@ -118,6 +124,35 @@ structurally: the list is superclassed by the host, so its window class is an
 `ATL:…` name containing a module address that changes between runs, but it always
 owns a `SysHeader32` child.
 
+### Everything runs on the GUI thread
+
+The windows, the subclass contexts and the spell checkers all belong to the
+client's GUI thread, and none of them is guarded by a lock. That is a deliberate
+choice — one thread is far easier to reason about than five mutexes — but it means
+the host's `HOOK_TIMER_SECOND` cannot be used directly: it fires on DC++'s
+`TimerManager` thread, not the GUI thread.
+
+So the timer hook does exactly two things: install the discovery hook (allowed
+from any thread) and `PostMessage` to a message-only window that the discovery
+hook creates the first time it runs, which by definition is on the GUI thread.
+The actual work — re-opening the checkers for a newly installed language,
+re-checking every attached control — happens from there.
+
+The controls we subclassed are kept in an explicit list rather than found again
+by walking the window tree. Walking it fails exactly when it matters: at
+shutdown, when the frames are already hidden or gone, a subclass left in place is
+a window proc pointing into a module that is about to be unloaded.
+
+### Case folding
+
+`towlower` and `towupper` are unusable here. In the CRT's default `"C"` locale
+they map ASCII and nothing else, so folding `Åke` leaves the `Å` alone and it
+stops matching `åke` — in the personal word list, the ignore list, the nick list
+and the autocorrect rules. `iswalpha` and `iswlower` *do* handle those letters,
+which is what hides the problem: the tokenizer looks right while every lookup
+that should be case-insensitive quietly is not. `Text::Fold` goes through
+`CharLowerBuffW` instead, and `squiggletest` asserts it.
+
 ### COM apartments
 
 `ISpellChecker` is an apartment-threaded COM object and may only be called from
@@ -138,8 +173,12 @@ if none answered it returns *correct* and caches nothing, so a failure produces
 no underlines rather than underlining everything.
 
 `squiggletest thread` creates the checkers on one thread and calls them from
-another. It is verified to **fail** without the rebind; a regression test that
-does not fail on the broken code proves nothing.
+another, and compares every answer against a speller built on the calling thread.
+Without the rebind the cross-thread speller reports every word as correct — no
+checker manages to answer — and the two disagree. A regression test that does not
+fail on the broken code proves nothing, and comparing against a same-thread
+speller rather than a fixed word list keeps that true on a machine that happens
+not to have a Swedish dictionary installed.
 
 ## Building
 
@@ -153,14 +192,24 @@ Visual Studio 2022 or later with the C++ workload. CMake ships with it.
 The C++ runtime is linked statically, so the plugin needs no VC++
 redistributable on the machines it is installed on.
 
-`squiggletest.exe` runs the checking logic without a DC client:
+`squiggletest.exe` runs the checking logic without a DC client. Everything except
+`dialog` exits non-zero if a check fails, so it can be run from a script:
 
 | Command | What it does |
 |---|---|
-| `squiggletest` | tokenizer and dictionary results for a set of chat lines |
+| `squiggletest` | character classification, tokenizer rules, dictionary lookups |
 | `squiggletest thread` | cross-thread COM regression test |
 | `squiggletest langs` | how each installed language will be labelled |
 | `squiggletest dialog [sv\|en]` | opens the settings dialog standalone |
+
+The dictionary checks skip any language this machine does not have installed and
+say so, rather than failing; the tokenizer and character-classification checks
+depend on nothing and always run.
+
+`build.ps1` finds Visual Studio through `vswhere`, so it does not care which year
+or edition is installed. `pack.ps1` refuses to build the `.dcext` unless
+`info.xml`, `res/Squiggle.rc` and `info->version` in `Plugin.cpp` all agree on the
+version number.
 
 ## Known host bugs
 

@@ -10,10 +10,10 @@
 #include <windows.h>
 #include <spellcheck.h>
 
+#include "Text.h"
 #include "TextFile.h"
 
 #include <algorithm>
-#include <cwctype>
 #include <sstream>
 
 namespace {
@@ -23,6 +23,19 @@ const CLSID kSpellCheckerFactory =
     {0x7ab36653, 0x1796, 0x484b, {0xbd, 0xfa, 0xe7, 0x4f, 0x1d, 0xb7, 0xc1, 0xdc}};
 
 ISpellChecker* AsChecker(void* p) { return static_cast<ISpellChecker*>(p); }
+
+// The host loads plugins on whichever thread it uses for startup, which is not
+// necessarily the GUI thread and is not necessarily an initialised COM apartment
+// yet. Calling this before every CoCreateInstance means the checkers work on
+// whatever thread ends up asking for them. RPC_E_CHANGED_MODE just means the
+// host already picked a different apartment model, which is fine for an
+// in-process server.
+//
+// Deliberately never uninitialised: unbalancing the host's own apartment would
+// be far worse than leaving one reference behind until the process exits.
+void EnsureComInitialised() {
+    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+}
 
 // Pulls every string out of an IEnumString, which is how the API returns both
 // the supported-language list and the suggestion list.
@@ -49,10 +62,7 @@ Speller::~Speller() {
 }
 
 std::wstring Speller::Fold(const std::wstring& word) {
-    std::wstring s = word;
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](wchar_t c) { return static_cast<wchar_t>(std::towlower(static_cast<wint_t>(c))); });
-    return s;
+    return Text::Fold(word);
 }
 
 bool Speller::Init(const std::vector<std::wstring>& languageTags) {
@@ -64,16 +74,7 @@ bool Speller::Init(const std::vector<std::wstring>& languageTags) {
 void Speller::OpenCheckers() {
     CloseCheckers();
 
-    // The host loads plugins on whichever thread it uses for startup, which is
-    // not necessarily the GUI thread and is not necessarily an initialised COM
-    // apartment yet. Initialising here means this works on whatever thread ends
-    // up calling it. RPC_E_CHANGED_MODE just means the host already picked a
-    // different apartment model, which is fine for an in-process server.
-    //
-    // Deliberately never uninitialised: unbalancing the host's own apartment
-    // would be far worse than leaving one reference behind until the process
-    // exits.
-    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    EnsureComInitialised();
 
     ISpellCheckerFactory* factory = nullptr;
     const HRESULT hr = ::CoCreateInstance(kSpellCheckerFactory, nullptr, CLSCTX_INPROC_SERVER,
@@ -215,6 +216,11 @@ std::vector<std::wstring> Speller::Suggest(const std::wstring& word, size_t maxC
 
 std::vector<std::wstring> Speller::InstalledLanguages() {
     std::vector<std::wstring> out;
+
+    // This is called from the settings dialog, which may well be the first thing
+    // this thread does with COM; without it the factory refuses to be created
+    // and the language list comes up empty for no visible reason.
+    EnsureComInitialised();
 
     ISpellCheckerFactory* factory = nullptr;
     if (FAILED(::CoCreateInstance(kSpellCheckerFactory, nullptr, CLSCTX_INPROC_SERVER,

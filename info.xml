@@ -6,7 +6,7 @@
 	<Version>2.3</Version>
 	<Author>kaje</Author>
 	<Description>Spell checking in chat: a red wavy underline under misspelled words as you type, right-click for suggestions. Several languages at once, Swedish and English interface.</Description>
-	<Website></Website>
+	<Website>https://github.com/kaje-home/Squiggle</Website>
 	<Plugin Platform="pe-x64">Squiggle-x64.dll</Plugin>
 	<Files>
 		<File>Las-mig.txt</File>

@@ -18,6 +18,7 @@ add_library(Squiggle SHARED
     src/SettingsDialog.cpp
     src/Speller.cpp
     src/Strings.cpp
+    src/Text.cpp
     src/TextFile.cpp
     src/Tokenizer.cpp
     res/Squiggle.rc
@@ -53,6 +54,7 @@ add_executable(squiggletest
     src/SettingsDialog.cpp
     src/Speller.cpp
     src/Strings.cpp
+    src/Text.cpp
     src/TextFile.cpp
     src/Tokenizer.cpp
     res/Squiggle.rc

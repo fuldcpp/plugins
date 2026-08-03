@@ -24,16 +24,25 @@
 // that is what is read instead.
 namespace Nicks {
 
+// Nicknames are kept per chat frame rather than in one process-wide set. A name
+// only counts as a name in the hub it belongs to: pooling every hub's user list
+// together means one person called "sedan" anywhere silently switches that word
+// off in every other hub, forever.
+//
 // Case-insensitive. Also matches the alphabetic parts of decorated nicks, so
 // "[SE]Pelle_42" makes a bare "Pelle" acceptable too.
-bool Contains(const std::wstring& word);
+bool Contains(HWND chatInput, const std::wstring& word);
+
+// Drops the names harvested for one chat frame, called when its input control
+// goes away.
+void Forget(HWND chatInput);
 
 void Clear();
 size_t Count();
 
-// Reads the user list belonging to the hub or PM frame that owns `chatInput`.
-// Must be called on the GUI thread. Rate-limited internally, so calling it on
-// every focus change is fine.
+// Reads the user list belonging to the hub or PM frame that owns `chatInput`,
+// replacing whatever was known about that frame. Must be called on the GUI
+// thread. Rate-limited per frame, so calling it on every focus change is fine.
 void HarvestFrom(HWND chatInput);
 
 }  // namespace Nicks

@@ -3,6 +3,38 @@
 
 #pragma code_page(65001)
 
+/* Keep in step with <Version> in info.xml and info->version in Plugin.cpp.
+   pack.ps1 refuses to build the .dcext if the three disagree. */
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION     2,3,0,0
+    PRODUCTVERSION  2,3,0,0
+    FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+    FILEFLAGS       0x0L
+    FILEOS          VOS_NT_WINDOWS32
+    FILETYPE        VFT_DLL
+    FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName",      "kaje"
+            VALUE "FileDescription",  "Squiggle - spell checking for Direct Connect clients"
+            VALUE "FileVersion",      "2.3.0.0"
+            VALUE "InternalName",     "Squiggle"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 kaje. GPL v3."
+            VALUE "OriginalFilename", "Squiggle-x64.dll"
+            VALUE "ProductName",      "Squiggle"
+            VALUE "ProductVersion",   "2.3.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
 /* Every caption below is overwritten at WM_INITDIALOG from Strings.cpp. The
    text kept here is only what a resource editor shows while laying the dialog
    out; it is the widths that matter, and they are sized for the longer of the

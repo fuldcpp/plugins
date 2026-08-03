@@ -57,6 +57,11 @@ std::string ReadSetting(const char* key) {
     return out;
 }
 
+// Stands in for "the user ticked nothing", which an empty string cannot express
+// because that is also what an unwritten setting reads back as. No language tag
+// is a bare hyphen, so it cannot collide with a real value.
+const wchar_t* const kNoLanguages = L"-";
+
 std::vector<std::wstring> SplitCsv(const std::wstring& s) {
     std::vector<std::wstring> out;
     std::wstringstream stream(s);
@@ -90,8 +95,16 @@ void Settings::Bind(void* config, const char* guid) {
 }
 
 void Settings::Load() {
+    // An empty stored value means "never configured", so the defaults stand. A
+    // user who deliberately unticks every language stores the sentinel instead,
+    // otherwise turning the plugin off that way silently undoes itself on the
+    // next start.
     const std::wstring langs = Widen(ReadSetting("Languages"));
-    if (!langs.empty()) languages = SplitCsv(langs);
+    if (langs == kNoLanguages) {
+        languages.clear();
+    } else if (!langs.empty()) {
+        languages = SplitCsv(langs);
+    }
 
     const std::string colourText = ReadSetting("Colour");
     if (!colourText.empty()) {
@@ -113,7 +126,8 @@ void Settings::Load() {
 }
 
 void Settings::Save() const {
-    WriteSetting("Languages", Narrow(JoinCsv(languages)));
+    WriteSetting("Languages",
+                 Narrow(languages.empty() ? std::wstring(kNoLanguages) : JoinCsv(languages)));
 
     char buf[16] = {};
     ::wsprintfA(buf, "%06X",

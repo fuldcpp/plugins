@@ -9,9 +9,12 @@
 
 #include <commctrl.h>
 
+#include "Text.h"
+
 #include <algorithm>
 #include <cwctype>
 #include <mutex>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -23,15 +26,18 @@ constexpr int kMaxUsers = 20000;
 constexpr ULONGLONG kMinIntervalMs = 10000;
 constexpr size_t kMinPartLength = 3;
 
+// One entry per chat frame. Replaced wholesale on each harvest, so names do not
+// accumulate as people come and go.
+struct Frame {
+    std::unordered_set<std::wstring> nicks;
+    ULONGLONG lastHarvest = 0;
+};
+
 std::mutex g_mutex;
-std::unordered_set<std::wstring> g_nicks;
-ULONGLONG g_lastHarvest = 0;
+std::unordered_map<HWND, Frame> g_frames;
 
 std::wstring Fold(const std::wstring& s) {
-    std::wstring out = s;
-    std::transform(out.begin(), out.end(), out.begin(),
-                   [](wchar_t c) { return static_cast<wchar_t>(std::towlower(static_cast<wint_t>(c))); });
-    return out;
+    return Text::Fold(s);
 }
 
 std::wstring ClassOf(HWND hwnd) {
@@ -82,51 +88,75 @@ HWND FindUserList(HWND chatInput) {
 
 // Adds the nick itself plus each alphabetic run inside it, so tags and
 // separators in "[SE]Pelle_42" do not hide the name people actually type.
-void AddLocked(const std::wstring& nick) {
+void Add(std::unordered_set<std::wstring>& into, const std::wstring& nick) {
     if (nick.empty()) return;
-    g_nicks.insert(Fold(nick));
+    into.insert(Fold(nick));
 
     std::wstring part;
     for (wchar_t c : nick) {
         if (std::iswalpha(static_cast<wint_t>(c))) {
             part += c;
         } else {
-            if (part.size() >= kMinPartLength) g_nicks.insert(Fold(part));
+            if (part.size() >= kMinPartLength) into.insert(Fold(part));
             part.clear();
         }
     }
     if (part.size() >= kMinPartLength && part.size() != nick.size()) {
-        g_nicks.insert(Fold(part));
+        into.insert(Fold(part));
     }
+}
+
+// The frame a chat input belongs to. Everything about a hub -- its input box and
+// its user list -- hangs off the same parent.
+HWND FrameOf(HWND chatInput) {
+    return chatInput ? ::GetParent(chatInput) : nullptr;
 }
 
 }  // namespace
 
-bool Contains(const std::wstring& word) {
+bool Contains(HWND chatInput, const std::wstring& word) {
     if (word.empty()) return false;
+
+    const HWND frame = FrameOf(chatInput);
+    if (!frame) return false;
+
     const std::wstring folded = Fold(word);
 
     std::lock_guard<std::mutex> lock(g_mutex);
-    return g_nicks.count(folded) != 0;
+    const auto it = g_frames.find(frame);
+    return it != g_frames.end() && it->second.nicks.count(folded) != 0;
+}
+
+void Forget(HWND chatInput) {
+    const HWND frame = FrameOf(chatInput);
+    if (!frame) return;
+
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_frames.erase(frame);
 }
 
 void Clear() {
     std::lock_guard<std::mutex> lock(g_mutex);
-    g_nicks.clear();
-    g_lastHarvest = 0;
+    g_frames.clear();
 }
 
 size_t Count() {
     std::lock_guard<std::mutex> lock(g_mutex);
-    return g_nicks.size();
+    size_t total = 0;
+    for (const auto& entry : g_frames) total += entry.second.nicks.size();
+    return total;
 }
 
 void HarvestFrom(HWND chatInput) {
+    const HWND frame = FrameOf(chatInput);
+    if (!frame) return;
+
     const ULONGLONG now = ::GetTickCount64();
     {
         std::lock_guard<std::mutex> lock(g_mutex);
-        if (g_lastHarvest != 0 && now - g_lastHarvest < kMinIntervalMs) return;
-        g_lastHarvest = now;
+        Frame& entry = g_frames[frame];
+        if (entry.lastHarvest != 0 && now - entry.lastHarvest < kMinIntervalMs) return;
+        entry.lastHarvest = now;
     }
 
     HWND list = FindUserList(chatInput);
@@ -151,8 +181,11 @@ void HarvestFrom(HWND chatInput) {
         if (len > 0) found.emplace_back(buffer.data(), static_cast<size_t>(len));
     }
 
+    std::unordered_set<std::wstring> fresh;
+    for (const std::wstring& nick : found) Add(fresh, nick);
+
     std::lock_guard<std::mutex> lock(g_mutex);
-    for (const std::wstring& nick : found) AddLocked(nick);
+    g_frames[frame].nicks = std::move(fresh);
 }
 
 }  // namespace Nicks

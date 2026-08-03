@@ -28,12 +28,24 @@ void SetModule(HINSTANCE instance);
 // Points the checker at the shared speller. Must be called before Install.
 void SetSpeller(Speller* speller);
 
-// Installs the discovery hook. Safe to call repeatedly and from any thread:
-// it locates the host's GUI thread itself and does nothing once installed.
+// Installs the discovery hook. Safe to call repeatedly and from any thread: it
+// locates the host's GUI thread itself and does nothing once installed. No
+// control is subclassed from here -- that happens from inside the hook, which is
+// the first code of ours guaranteed to run on the GUI thread.
 // Returns true once the hook is live.
 bool EnsureInstalled();
 
-// Detaches from every control and removes the hook.
+// Runs `task` on the host's GUI thread, where every window, subclass context and
+// spell-checking COM object this plugin owns lives. Returns false when the GUI
+// thread has not been reached yet, in which case nothing ran.
+//
+// This is what the host's per-second timer hook must go through: it fires on the
+// TimerManager thread, and touching a subclass context or the speller from there
+// races the GUI thread with no lock between them.
+bool RunOnGui(void (*task)(), bool blocking = false);
+
+// Detaches from every control and removes the hook. Marshals itself onto the GUI
+// thread; safe to call from anywhere.
 void Uninstall();
 
 // Drops cached results so the next paint re-checks with current settings.

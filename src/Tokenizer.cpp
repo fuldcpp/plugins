@@ -7,6 +7,8 @@
 // version. See the LICENSE file for details.
 #include "Tokenizer.h"
 
+#include "Text.h"
+
 #include <algorithm>
 #include <cwctype>
 
@@ -39,15 +41,9 @@ bool IsRunChar(wchar_t c) {
     }
 }
 
-std::wstring ToLower(std::wstring s) {
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](wchar_t c) { return static_cast<wchar_t>(std::towlower(static_cast<wint_t>(c))); });
-    return s;
-}
-
 bool StartsWith(const std::wstring& s, const wchar_t* prefix) {
     const std::wstring p(prefix);
-    return s.size() >= p.size() && ToLower(s.substr(0, p.size())) == p;
+    return s.size() >= p.size() && Text::Fold(s.substr(0, p.size())) == p;
 }
 
 // True when the whole run is something we must never spell-check.
@@ -74,9 +70,11 @@ bool IsIgnoredRun(const std::wstring& run) {
     if (run.find(L'.') != std::wstring::npos) return true;
     if (run.find(L'_') != std::wstring::npos) return true;
 
-    // TTH base32 hashes are 39 chars of upper-case letters and digits; the digit
-    // rule above catches most, this catches the rest along with other long noise.
-    if (run.size() >= 24) return true;
+    // A sanity limit, nothing more. TTH base32 hashes are 39 characters of
+    // upper-case letters and digits, so the digit rule above and the ALL-CAPS
+    // rule below already account for them; a low cut-off here would only silence
+    // the long Swedish compounds this plugin exists to handle.
+    if (run.size() >= 48) return true;
 
     // ALL CAPS is shouting or an acronym, not a spelling mistake worth flagging.
     const bool hasLower = std::any_of(run.begin(), run.end(),
@@ -91,6 +89,15 @@ bool IsIgnoredRun(const std::wstring& run) {
     }
 
     return false;
+}
+
+// True for the apostrophe in "don't": one standing between two letters. A
+// leading or trailing one is quotation, not spelling.
+bool IsInWordApostrophe(const std::wstring& text, int i) {
+    const wchar_t c = text[static_cast<size_t>(i)];
+    if (c != L'\'' && c != L'’') return false;
+    if (i <= 0 || i + 1 >= static_cast<int>(text.size())) return false;
+    return IsLetter(text[static_cast<size_t>(i) - 1]) && IsLetter(text[static_cast<size_t>(i) + 1]);
 }
 
 // Strip leading/trailing characters that are not letters, so "hej," and "(hej)"
@@ -150,11 +157,16 @@ std::vector<Range> TokenizeForSpelling(const std::wstring& text) {
         const std::wstring runText = Slice(text, run);
         if (IsIgnoredRun(runText)) continue;
 
-        // The run survived the filters; split it on hyphens so "e-post" checks
-        // both halves, then trim each piece down to its letters.
+        // The run survived the filters, but it is held together by characters
+        // that are not part of any word: a run is allowed to contain '?', '&',
+        // '+' and friends so that URLs stay in one piece, and once the run is
+        // known not to be a URL those characters have to be split on or
+        // "vad?varfor" gets looked up as a single word. Hyphens go the same way,
+        // so "e-post" checks both halves. Only an apostrophe standing between
+        // two letters survives, because that is a real part of "don't".
         int segStart = run.start;
         for (int j = run.start; j <= run.end(); ++j) {
-            const bool boundary = (j == run.end()) || text[j] == L'-';
+            const bool boundary = (j == run.end()) || (!IsLetter(text[j]) && !IsInWordApostrophe(text, j));
             if (!boundary) continue;
 
             Range word{segStart, j - segStart};
