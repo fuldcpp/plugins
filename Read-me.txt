@@ -1,0 +1,109 @@
+SQUIGGLE
+Spell checking for DC clients
+=============================
+
+A red wavy underline appears under misspelled words as you type, just like in
+Word. Right-click an underlined word for suggestions. Works in both main chat
+and private messages.
+
+Named after the wavy line itself. It works in any language Windows has a
+dictionary for, and its own interface is available in English and Swedish.
+
+
+WHAT YOU NEED
+-------------
+
+* A 64-bit DC client with plugin support (DCAPI v8).
+  Verified against FulDC++ 1.08. AirDC++ has no plugin support and will not
+  work.
+
+* At least one spell-checking language installed in Windows.
+  Your own display language is usually already there. Any additional language
+  has to be added manually:
+
+      Settings -> Time & language -> Language & region -> Add a language
+
+  Make sure "Basic typing" is ticked - that is the part containing the spell
+  checker. Your display language is not changed by this.
+
+  Windows also adds that language's keyboard layout. If you would rather not
+  have Win+Space start switching layouts, remove the keyboard under the
+  language's Options. The spell checker stays.
+
+
+INSTALLING
+----------
+
+1. If you have DC++'s old "Spell Checker" plugin installed, disable it first.
+   Both hook the same text field and draw over each other.
+
+2. Settings -> Plugins -> Add -> pick Squiggle.dcext
+
+That's it. No restart needed.
+
+IMPORTANT: put Squiggle.dcext in a folder whose path contains no accented or
+non-English characters. FulDC++ 1.08 cannot open .dcext files on such paths and
+fails with the error "unzOpen". The file is fine, the client just cannot handle
+the path. Where the file sits afterwards does not matter, so installing from
+your Downloads folder is the simplest route.
+
+
+GOOD TO KNOW
+------------
+
+Several languages at once. A word is considered correct if any of the selected
+languages accepts it, so mixing two languages in one sentence produces no false
+underlines. This is the main thing the old DC++ spell checker could not do - it
+allows only one active dictionary.
+
+Nicknames are never flagged. The plugin reads the hub's user list.
+
+URLs, magnet links, file names, TTH hashes, anything containing digits,
+ALL CAPS, and whole lines starting with / are skipped.
+
+The right-click menu also has "Add to dictionary" for words you use often.
+
+Autocorrect is OFF by default. To enable it: Configure -> tick "Correct typos
+automatically". Ctrl+Z undoes a correction and disables the rule for that word.
+
+
+SETTINGS
+--------
+
+Settings -> Plugins -> Squiggle -> Configure
+
+There you choose languages, the colour and thickness of the underline, your
+personal word list, and the autocorrect rules.
+
+The plugin follows your client's own interface language, in English or Swedish.
+If it guesses wrong, set it explicitly with the "Interface" box at the bottom of
+the settings dialog; the change takes effect immediately.
+
+
+IF NOTHING HAPPENS
+------------------
+
+No underline at all?
+  Open Configure and look under "Languages". If it says no languages are
+  active, Windows has no spell checker installed - see above.
+
+The plugin will not install?
+  The client is most likely 32-bit, or does not have DCAPI v8.
+
+Only one language is accepted?
+  The other one is missing in Windows. Add it as described above - the plugin
+  picks it up within half a minute, no restart needed.
+
+
+FILES
+-----
+
+Two files sit in the plugin folder, editable by hand if you prefer:
+
+  personal-words.txt   personal words, one per line
+  autocorrect.txt      autocorrect rules, one per line, format wrong=right
+
+Quickest way there: Configure -> the "Open plugin folder" button.
+
+The folder lives under %LOCALAPPDATA%, in a directory named after the plugin's
+GUID, so it is not somewhere you would stumble across.

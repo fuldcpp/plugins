@@ -1,0 +1,107 @@
+﻿﻿SQUIGGLE
+Stavningskontroll för DC-klienter
+=================================
+
+Röd våglinje under felstavade ord medan du skriver, precis som i Word.
+Högerklicka på ett understruket ord för att få förslag. Fungerar i både
+huvudchatt och privata meddelanden.
+
+Namnet kommer från våglinjen själv. Gränssnittet finns på svenska och
+engelska, och plugin:en följer klientens språk automatiskt.
+
+
+VAD DU BEHÖVER
+--------------
+
+* En 64-bitars DC-klient med plugin-stöd (DCAPI v8).
+  Verifierad mot FulDC++ 1.08. AirDC++ saknar plugin-stöd och fungerar inte.
+
+* Minst ett stavningsspråk installerat i Windows.
+  Svenska finns nästan alltid. Engelska måste du oftast lägga till själv:
+
+      Inställningar -> Tid och språk -> Språk och region -> Lägg till språk
+      -> English (United States)
+
+  Se till att "Grundläggande skrivning" är ikryssad - det är den delen som
+  innehåller stavningskontrollen. Ditt gränssnittsspråk ändras inte.
+
+  Windows lägger till ett amerikanskt tangentbord på köpet. Vill du slippa
+  att Win+Blanksteg börjar växla layout: ta bort US-tangentbordet under
+  språkets Alternativ. Stavningskontrollen sitter kvar.
+
+
+INSTALLERA
+----------
+
+1. Har du DC++:s gamla "Spell Checker"-plugin installerad - inaktivera den
+   först. Båda hakar i samma textfält och ritar över varandra.
+
+2. Inställningar -> Plugins -> Lägg till -> välj Squiggle.dcext
+
+Klart. Ingen omstart behövs.
+
+VIKTIGT: lägg Squiggle.dcext i en mapp UTAN å, ä eller ö i namnet.
+FulDC++ 1.08 kan inte öppna .dcext-filer på sökvägar med svenska tecken -
+installationen misslyckas då med felet "unzOpen". Filen är inte trasig,
+klienten klarar bara inte sökvägen. Det spelar ingen roll var filen ligger
+efteråt, så det enklaste är att installera från t.ex. Hämtade filer.
+
+
+BRA ATT VETA
+------------
+
+Flera språk samtidigt. Ett ord är rätt om något av de valda språken godkänner
+det, så svenska och engelska i samma mening ger inga falska markeringar.
+
+Nickar markeras aldrig. Plugin:en läser hubbens användarlista.
+
+URL:er, magnet-länkar, filnamn, TTH-hashar, siffror, VERSALER och rader som
+börjar med / hoppas över.
+
+Högerklicksmenyn har också "Lägg till i ordlistan" för ord du använder ofta.
+
+Autokorrigering är AVSTÄNGD som standard. Vill du ha den: Konfigurera ->
+kryssa i "Rätta feltryckningar automatiskt". Ctrl+Z ångrar en rättelse och
+stänger av regeln för det ordet.
+
+
+INSTÄLLNINGAR
+-------------
+
+Inställningar -> Plugins -> Squiggle -> Konfigurera
+
+Där väljer du språk, färg och tjocklek på våglinjen, egna ord och
+autokorrigeringsregler.
+
+Plugin:en följer klientens eget gränssnittsspråk, svenska eller engelska. Gissar
+den fel kan du välja själv med rutan "Gränssnitt" längst ner i dialogen -
+ändringen slår igenom direkt.
+
+
+OM DET INTE HÄNDER NÅGOT
+------------------------
+
+Ingen våglinje alls?
+  Öppna Konfigurera och se efter under "Språk". Står det att inga språk är
+  aktiva har Windows ingen stavningskontroll installerad - se ovan.
+
+Plugin:en går inte att installera?
+  Klienten är troligen 32-bitars, eller har inte DCAPI v8.
+
+Bara svenska ord godkänns?
+  Engelska saknas i Windows. Lägg till det enligt ovan - plugin:en hittar det
+  inom en halv minut, ingen omstart behövs.
+
+
+FILER
+-----
+
+I plugin-mappen ligger två filer du kan redigera för hand om du hellre vill:
+
+  personal-words.txt   ett ord per rad
+  autocorrect.txt      en regel per rad, formatet fel=rätt
+
+Enklast dit: Konfigurera -> knappen "Öppna plugin-mappen".
+
+Mappen ligger under %LOCALAPPDATA%, i en mapp döpt efter plugin:ens GUID, så
+den är inget man hittar av en slump.

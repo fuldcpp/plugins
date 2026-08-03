@@ -1,0 +1,48 @@
+#include <winres.h>
+#include "resource.h"
+
+#pragma code_page(65001)
+
+/* Every caption below is overwritten at WM_INITDIALOG from Strings.cpp. The
+   text kept here is only what a resource editor shows while laying the dialog
+   out; it is the widths that matter, and they are sized for the longer of the
+   Swedish and English strings. */
+
+IDD_SETTINGS DIALOGEX 0, 0, 330, 296
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Stavning"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Språk", IDC_GRP_LANG, 7, 4, 316, 92
+    CONTROL         "", IDC_LANGLIST, "SysListView32",
+                    LVS_REPORT | LVS_NOCOLUMNHEADER | LVS_SINGLESEL | LVS_SHOWSELALWAYS |
+                    WS_BORDER | WS_TABSTOP, 14, 15, 302, 62
+    LTEXT           "", IDC_LANGHINT, 14, 80, 302, 12
+
+    GROUPBOX        "Våglinje", IDC_GRP_UNDERLINE, 7, 100, 316, 36
+    LTEXT           "Färg:", IDC_LBL_COLOUR, 15, 116, 32, 8
+    PUSHBUTTON      "Ändra…", IDC_COLOUR, 49, 113, 46, 14
+    LTEXT           "Tjocklek:", IDC_LBL_THICKNESS, 99, 116, 42, 8
+    COMBOBOX        IDC_THICKNESS, 143, 114, 40, 80,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "", IDC_PREVIEW, "Static", SS_OWNERDRAW | WS_BORDER, 189, 111, 127, 19
+
+    GROUPBOX        "Egna ord", IDC_GRP_PERSONAL, 7, 140, 156, 118
+    EDITTEXT        IDC_PERSONAL, 14, 151, 142, 100,
+                    ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_TABSTOP
+
+    GROUPBOX        "Autokorrigering", IDC_GRP_AUTO, 167, 140, 156, 118
+    CONTROL         "", IDC_AUTOCORRECT, "Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP, 174, 151, 142, 10
+    LTEXT           "", IDC_AUTOHINT, 174, 163, 142, 18
+    EDITTEXT        IDC_CORRECTIONS, 174, 184, 142, 67,
+                    ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_TABSTOP
+
+    LTEXT           "", IDC_STATUS, 7, 261, 316, 17
+    PUSHBUTTON      "Öppna plugin-mappen", IDC_OPENFOLDER, 7, 279, 92, 14
+    LTEXT           "Gränssnitt:", IDC_LBL_UILANG, 102, 282, 44, 8
+    COMBOBOX        IDC_UILANG, 148, 280, 60, 80,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "OK", IDOK, 219, 279, 50, 14
+    PUSHBUTTON      "Avbryt", IDCANCEL, 273, 279, 50, 14
+END
