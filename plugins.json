@@ -2,6 +2,157 @@
     "formatVersion":  1,
     "plugins":  [
                     {
+                        "uuid":  "{f83c6829-3c25-4b32-a6a5-63d57b59a18d}",
+                        "name":  "Chat plugin",
+                        "version":  "1",
+                        "apiVersion":  8,
+                        "author":  "DC++",
+                        "description":  "Chat formatting control: define chat expressions to match and customizations or behaviors to apply (change the font or the color, play a sound...).",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64",
+                                          "pe-x86"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/chatplugin-v1/ChatPlugin.dcext",
+                        "sha256":  "000e9e8f286d79335f9ba9ac3454e43598a46da34057b808bbcf2fa1042b66a6",
+                        "size":  15409490,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/chatplugin-v1/ChatPlugin-source.zip"
+                    },
+                    {
+                        "uuid":  "{f2a7dea1-d6bf-4759-8b46-86857c117052}",
+                        "name":  "Description rotator",
+                        "version":  "2.1",
+                        "apiVersion":  8,
+                        "author":  "DC++",
+                        "description":  "Rotate between multiple user descriptions, displayed beside your nick in hub user lists. Configurable per hub, with rotation intervals and online time.",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/descriptionrotator-v2.1/DescriptionRotator.dcext",
+                        "sha256":  "631189b20bf23058558a9da16ddcfab8279add3f7f63cdfa8199500052b0fe2d",
+                        "size":  285897,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/descriptionrotator-v2.1/DescriptionRotator-source.zip"
+                    },
+                    {
+                        "uuid":  "{22b95072-afdd-4e36-82b4-c796fb61f41a}",
+                        "name":  "Dev plugin",
+                        "version":  "1.40",
+                        "apiVersion":  8,
+                        "author":  "DC++",
+                        "description":  "Plugin for developers: network traffic analysis, ability to send custom commands.",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/devplugin-v1.40/DevPlugin.dcext",
+                        "sha256":  "3909a77e2353f01926de730786ea148355ee2ab397a13b197ee21b63a11bcbe0",
+                        "size":  1185289,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/devplugin-v1.40/DevPlugin-source.zip"
+                    },
+                    {
+                        "uuid":  "{f93beade-257d-4341-a92d-2484f63d48d0}",
+                        "name":  "iFeelPowerful",
+                        "version":  "1",
+                        "apiVersion":  8,
+                        "author":  "poy",
+                        "description":  "Appear as an operator in hubs where you aren\u0027t!",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64",
+                                          "pe-x86"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/ifeelpowerful-v1/iFeelPowerful.dcext",
+                        "sha256":  "a904fba73f8d9a4eabf806aa2d56743e30ac68fa1b7872a4d4307c4083f01a21",
+                        "size":  1059347,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/ifeelpowerful-v1/iFeelPowerful-source.zip"
+                    },
+                    {
+                        "uuid":  "{c71036f2-ab7f-4bfd-bfee-f242b55f82f1}",
+                        "name":  "Inserter plugin",
+                        "version":  "1.1",
+                        "apiVersion":  8,
+                        "author":  "DC++",
+                        "description":  "Register keyboard shortcuts to insert preconfigured text.",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64",
+                                          "pe-x86"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/inserterplugin-v1.1/InserterPlugin.dcext",
+                        "sha256":  "3d46de309ac548a4f91492ff59f8aa0d0e2904819ffae2bf9d2554835ef87a3f",
+                        "size":  9565204,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/inserterplugin-v1.1/InserterPlugin-source.zip"
+                    },
+                    {
+                        "uuid":  "{32c71f4f-ea2f-40ea-a5c9-52e46e721bbc}",
+                        "name":  "LoL plugin",
+                        "version":  "1.1",
+                        "apiVersion":  8,
+                        "author":  "DC++",
+                        "description":  "Exchange League of Legends profile information with other users. Works on ADC hubs only.",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64",
+                                          "pe-x86"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/lolplugin-v1.1/LoLPlugin.dcext",
+                        "sha256":  "3369e92f47729f5966baca434bf8fce82c24bff56419d02149b0d5a9107399b5",
+                        "size":  9706161,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/lolplugin-v1.1/LoLPlugin-source.zip"
+                    },
+                    {
+                        "uuid":  "{aa73bba2-d8ca-47a2-8dc2-760fc3d26b53}",
+                        "name":  "MediaPlayer plugin",
+                        "version":  "0.3",
+                        "apiVersion":  8,
+                        "author":  "iceman50",
+                        "description":  "Send media player spam to chat",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64",
+                                          "pe-x86"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/mediaplayer-v0.3/MediaPlayer.dcext",
+                        "sha256":  "aa26e55fefcb4450223cd19316de5281663452f82c62c35698465466d64de353",
+                        "size":  1257336,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/mediaplayer-v0.3/MediaPlayer-source.zip"
+                    },
+                    {
+                        "uuid":  "{be8b377f-4a88-43ce-9fd0-4166dfbc91ef}",
+                        "name":  "Punctuator",
+                        "version":  "1",
+                        "apiVersion":  8,
+                        "author":  "poy",
+                        "description":  "Disallows sending non-punctuated messages. Messages can be prefixed with \"/punc\" to force sending them.",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64",
+                                          "pe-x86"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/punctuator-v1/Punctuator.dcext",
+                        "sha256":  "5250b9fa933f299eeffe84aef4c5650ecefe5fd4b31e5337d3fc3eb48de753f2",
+                        "size":  878711,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/punctuator-v1/Punctuator-source.zip"
+                    },
+                    {
+                        "uuid":  "{6a8a51d8-50a9-4155-aa4c-8569c7aaf85b}",
+                        "name":  "Scripting plugin",
+                        "version":  "1.10",
+                        "apiVersion":  8,
+                        "author":  "DC++",
+                        "description":  "Adds scripting support (supported languages: Lua).",
+                        "website":  "http://dcplusplus.sourceforge.net/",
+                        "platforms":  [
+                                          "pe-x64",
+                                          "pe-x86"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/scriptplugin-v1.10/ScriptPlugin.dcext",
+                        "sha256":  "d177439b87d254a79bcbdf36b306e8bd392adcbf53b1aee02d820c4af185bf81",
+                        "size":  6257742,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/scriptplugin-v1.10/ScriptPlugin-source.zip"
+                    },
+                    {
                         "uuid":  "{8f3a7c21-5d94-4e0b-9a6f-2c1b8e7d4a35}",
                         "name":  "Squiggle",
                         "version":  "2.4",

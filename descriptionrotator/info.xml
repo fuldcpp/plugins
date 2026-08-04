@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 
-<!--
-This file is an example info.xml to be included in the dcext package. For more
-information, read "Plugin format (dcext).txt" in the "doc" directory.
-
-This file has been generated using the information filled in the src/version.h file.
-
-Edit the <Plugin> tags to include your plugin files.
-If you support Linux, include elf-x64 and elf-x86 platforms.
-
-The
+<dcext>
+	<UUID>{f2a7dea1-d6bf-4759-8b46-86857c117052}</UUID>
+	<Name>Description rotator</Name>
+	<Version>2.1</Version>
+	<ApiVersion>8</ApiVersion>
+	<Author>DC++</Author>
+	<Description>Rotate between multiple user descriptions, displayed beside your nick in hub user lists. Configurable per hub, with rotation intervals and online time.</Description>
+	<Website>http://dcplusplus.sourceforge.net/</Website>
+	<Plugin Platform="pe-x64">DescriptionRotator-x64.dll</Plugin>
 	<Files>
 	</Files>
 </dcext>

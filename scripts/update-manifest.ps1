@@ -21,19 +21,24 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$root     = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+# $PSScriptRoot, not $MyInvocation: the latter comes back empty when this is called from
+# inside another script's loop, which silently makes every path below null.
+$root     = Split-Path -Parent $PSScriptRoot
 $dir      = Join-Path $root $Plugin
 $infoPath = Join-Path $dir 'info.xml'
 $manifest = Join-Path $root 'plugins.json'
 
 if (-not (Test-Path $infoPath)) { throw "No info.xml in $dir" }
 
+# Deliberately not called $package: PowerShell variables are case-insensitive, so that name
+# is the [string] $Package parameter, and assigning a FileInfo to it coerces straight back to
+# a string whose .FullName is silently null.
 if ($Package) {
     if (-not (Test-Path $Package)) { throw "No package at $Package" }
-    $package = Get-Item $Package
+    $packageFile = Get-Item $Package
 } else {
-    $package = Get-ChildItem -Path $dir -Filter '*.dcext' -File
-    if ($package.Count -ne 1) { throw "Expected exactly one .dcext in $dir, found $($package.Count). Run pack.ps1 first." }
+    $packageFile = Get-ChildItem -Path $dir -Filter '*.dcext' -File
+    if ($packageFile.Count -ne 1) { throw "Expected exactly one .dcext in $dir, found $($packageFile.Count). Run pack.ps1 first." }
 }
 
 $info = ([xml](Get-Content $infoPath -Raw)).dcext
@@ -51,9 +56,9 @@ $entry = [ordered]@{
     description = [string] $info.Description
     website     = [string] $info.Website
     platforms   = $platforms
-    url         = "https://github.com/$Repository/releases/download/$Tag/$($package.Name)"
-    sha256      = (Get-FileHash -Path $package.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    size        = [int64] $package.Length
+    url         = "https://github.com/$Repository/releases/download/$Tag/$($packageFile.Name)"
+    sha256      = (Get-FileHash -Path $packageFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    size        = [int64] $packageFile.Length
 }
 
 if ($SourceAsset) {
