@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+
+<!--
+This file is an example info.xml to be included in the dcext package. For more
+information, read "Plugin format (dcext).txt" in the "doc" directory.
+
+This file has been generated using the information filled in the src/version.h file.
+
+Edit the <Plugin> tags to include your plugin files.
+If you support Linux, include elf-x64 and elf-x86 platforms.
+
+The
+	<Files>
+	</Files>
+</dcext>

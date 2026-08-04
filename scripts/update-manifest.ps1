@@ -10,6 +10,12 @@
 param(
     [Parameter(Mandatory)][string] $Plugin,
     [Parameter(Mandatory)][string] $Tag,
+    # Republished plugins are not built here, so the package comes from wherever it was fetched
+    [string] $Package,
+    # Where the corresponding source for this package is published. Required for anything we
+    # did not write: shipping a GPL binary obliges us to point at the matching source, and the
+    # client shows this link next to the plugin.
+    [string] $SourceAsset,
     [string] $Repository = $(if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { 'fuldcpp/plugins' })
 )
 
@@ -22,8 +28,13 @@ $manifest = Join-Path $root 'plugins.json'
 
 if (-not (Test-Path $infoPath)) { throw "No info.xml in $dir" }
 
-$package = Get-ChildItem -Path $dir -Filter '*.dcext' -File
-if ($package.Count -ne 1) { throw "Expected exactly one .dcext in $dir, found $($package.Count). Run pack.ps1 first." }
+if ($Package) {
+    if (-not (Test-Path $Package)) { throw "No package at $Package" }
+    $package = Get-Item $Package
+} else {
+    $package = Get-ChildItem -Path $dir -Filter '*.dcext' -File
+    if ($package.Count -ne 1) { throw "Expected exactly one .dcext in $dir, found $($package.Count). Run pack.ps1 first." }
+}
 
 $info = ([xml](Get-Content $infoPath -Raw)).dcext
 
@@ -43,6 +54,10 @@ $entry = [ordered]@{
     url         = "https://github.com/$Repository/releases/download/$Tag/$($package.Name)"
     sha256      = (Get-FileHash -Path $package.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     size        = [int64] $package.Length
+}
+
+if ($SourceAsset) {
+    $entry.source = "https://github.com/$Repository/releases/download/$Tag/$SourceAsset"
 }
 
 if ($entry.version -ne ($Tag -replace '^.+-v', '')) {
