@@ -37,15 +37,18 @@ INSTALLING
 1. If you have DC++'s old "Spell Checker" plugin installed, disable it first.
    Both hook the same text field and draw over each other.
 
-2. Settings -> Plugins -> Add -> pick Squiggle.dcext
+2. Settings -> Plugins -> Get plugins... -> pick Squiggle -> Install
 
 That's it. No restart needed.
 
-IMPORTANT: put Squiggle.dcext in a folder whose path contains no accented or
-non-English characters. FulDC++ 1.08 cannot open .dcext files on such paths and
-fails with the error "unzOpen". The file is fine, the client just cannot handle
-the path. Where the file sits afterwards does not matter, so installing from
-your Downloads folder is the simplest route.
+To install a file you downloaded or built yourself, use Settings -> Plugins ->
+Add and pick Squiggle.dcext.
+
+IMPORTANT (FulDC++ 1.08 and older only): put Squiggle.dcext in a folder whose
+path contains no accented or non-English characters. Those versions cannot open
+.dcext files on such paths and fail with the error "unzOpen". The file is fine,
+the client just cannot handle the path, so installing from your Downloads folder
+is the simplest route. Fixed in 1.09.
 
 
 GOOD TO KNOW

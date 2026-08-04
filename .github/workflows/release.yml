@@ -1,0 +1,66 @@
+# Builds and publishes a plugin, then regenerates plugins.json from the package that was
+# actually uploaded. The manifest is what the client reads to offer plugins, so it must never
+# be maintained by hand: a hash typed from the wrong build breaks every install of that plugin.
+#
+# The manifest is NOT signed here. Signing needs the release private key, which stays offline;
+# the flow is: tag -> this workflow -> commit plugins.json -> sign it locally -> publish both
+# to the website, exactly as version.xml / version.xml.sign are handled.
+
+name: Release a plugin
+
+on:
+  push:
+    tags:
+      - '*-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tag names the directory: "squiggle-v2.4" -> squiggle
+      - name: Resolve the plugin from the tag
+        id: plugin
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          if ($tag -notmatch '^(?<name>.+)-v(?<version>.+)$') { throw "Tag '$tag' is not <plugin>-v<version>" }
+          $name = $Matches.name
+          if (-not (Test-Path $name)) { throw "No directory '$name' for tag '$tag'" }
+          "name=$name" >> $env:GITHUB_OUTPUT
+          "version=$($Matches.version)" >> $env:GITHUB_OUTPUT
+
+      - name: Build
+        shell: pwsh
+        working-directory: ${{ steps.plugin.outputs.name }}
+        run: .\build.ps1
+
+      # pack.ps1 also enforces that info.xml, the DLL resource and the source agree on the
+      # version, so a mismatched tag fails here rather than shipping
+      - name: Pack
+        shell: pwsh
+        working-directory: ${{ steps.plugin.outputs.name }}
+        run: .\pack.ps1
+
+      - name: Regenerate plugins.json
+        shell: pwsh
+        run: .\scripts\update-manifest.ps1 -Plugin '${{ steps.plugin.outputs.name }}' -Tag '${{ github.ref_name }}'
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.plugin.outputs.name }} ${{ steps.plugin.outputs.version }}
+          files: ${{ steps.plugin.outputs.name }}/*.dcext
+
+      # Left as an artifact rather than pushed: the manifest only becomes usable once it has
+      # been signed offline, and an unsigned update to main would be ignored by every client.
+      - name: Upload the manifest for signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins-json
+          path: plugins.json

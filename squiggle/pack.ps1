@@ -43,4 +43,13 @@ try {
     $zip.Dispose()
 }
 
-Write-Output ("KLAR: {0}  ({1} byte)" -f $out, (Get-Item $out).Length)
+$size   = (Get-Item $out).Length
+$sha256 = (Get-FileHash -Path $out -Algorithm SHA256).Hash.ToLowerInvariant()
+
+Write-Output ("KLAR: {0}  ({1} byte)" -f $out, $size)
+
+# Faltet som plugins.json maste innehalla for att klienten ska acceptera nedladdningen.
+Write-Output ""
+Write-Output "plugins.json:"
+Write-Output ("  `"size`": {0}," -f $size)
+Write-Output ("  `"sha256`": `"{0}`"," -f $sha256)

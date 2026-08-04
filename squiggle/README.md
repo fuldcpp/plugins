@@ -42,13 +42,15 @@ restart is needed.
 
 ## Installing
 
-Download `Squiggle.dcext` from
-[Releases](https://github.com/fuldcpp/plugins/releases), then
-**Settings → Plugins → Add**.
+**Settings → Plugins → Get plugins…** in the client, select Squiggle, Install.
 
-> Put the file in a folder whose path has no accented characters. FulDC++ 1.08
-> cannot open `.dcext` files on such paths and fails with `unzOpen`. See
-> [Known host bugs](#known-host-bugs).
+To install a build of your own, or a `Squiggle.dcext` downloaded from
+[Releases](https://github.com/fuldcpp/plugins/releases), use
+**Settings → Plugins → Add** instead.
+
+> On FulDC++ 1.08 and older, keep the file in a folder whose path has no accented
+> characters: those clients cannot open `.dcext` files on such a path and fail with
+> `unzOpen`. Fixed in 1.09. See [Known host bugs](#known-host-bugs).
 
 ## Settings
 

@@ -1,0 +1,20 @@
+{
+    "formatVersion":  1,
+    "plugins":  [
+                    {
+                        "uuid":  "{8f3a7c21-5d94-4e0b-9a6f-2c1b8e7d4a35}",
+                        "name":  "Squiggle",
+                        "version":  "2.4",
+                        "apiVersion":  8,
+                        "author":  "kaje",
+                        "description":  "Spell checking in chat: a red wavy underline under misspelled words as you type, right-click for suggestions. Several languages at once, Swedish and English interface.",
+                        "website":  "https://github.com/fuldcpp/plugins/tree/main/squiggle",
+                        "platforms":  [
+                                          "pe-x64"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/squiggle-v2.4/Squiggle.dcext",
+                        "sha256":  "1e21855ae78fb8be579c4abcb536a673bbdfe6feff921ad0c662c471e8af2097",
+                        "size":  155786
+                    }
+                ]
+}
