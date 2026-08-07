@@ -19,6 +19,11 @@ they can be installed from the client instead of downloaded by hand.
 Each directory records who wrote it, where the source came from and which revision was
 taken, in its `PROVENANCE.md`, and keeps the upstream licence verbatim.
 
+All but one are republished byte-for-byte as their authors published them. The exception is
+[protocolanalyzer](protocolanalyzer/), whose author publishes source only — that package is our
+build of it, and its `PROVENANCE.md` records the revision taken and the two toolchain patches
+needed to compile it.
+
 | Plugin | Version | What it does |
 |---|---|---|
 | [chatplugin](chatplugin/) | 1 | Match chat expressions and apply customisations to them (colour, sound) |
@@ -28,6 +33,7 @@ taken, in its `PROVENANCE.md`, and keeps the upstream licence verbatim.
 | [inserterplugin](inserterplugin/) | 1.1 | Keyboard shortcuts that insert preconfigured text into chat |
 | [lolplugin](lolplugin/) | 1.1 | Exchange League of Legends profile information (ADC hubs only) |
 | [mediaplayer](mediaplayer/) | 0.3 | Send now-playing information to chat |
+| [protocolanalyzer](protocolanalyzer/) | 1.00 | Capture and decode live ADC/NMDC traffic, with filtering, a field inspector and redaction |
 | [punctuator](punctuator/) | 1 | Refuses to send unpunctuated messages unless prefixed with `/punc` |
 | [scriptplugin](scriptplugin/) | 1.10 | Lua scripting support, with the BCDC++ client-side scripts |
 

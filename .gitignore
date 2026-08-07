@@ -1,0 +1,3 @@
+# Local build tree for the Protocol Analyzer package. The source ships as a release asset
+# (see protocolanalyzer/PROVENANCE.md), not from here.
+/DC Protocol Analyzer/

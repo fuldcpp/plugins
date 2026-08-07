@@ -119,6 +119,22 @@
                         "source":  "https://github.com/fuldcpp/plugins/releases/download/mediaplayer-v0.3/MediaPlayer-source.zip"
                     },
                     {
+                        "uuid":  "{b6bbc82c-dadf-447d-94c2-c1bc274e2e76}",
+                        "name":  "Protocol Analyzer",
+                        "version":  "1.00",
+                        "apiVersion":  8,
+                        "author":  "iceman50",
+                        "description":  "Protocol analyzer for ADC and NMDC.",
+                        "website":  "https://github.com/iceman50/DC-Protocol-Analyzer",
+                        "platforms":  [
+                                          "pe-x64"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/protocolanalyzer-v1.00/ProtocolAnalyzer.dcext",
+                        "sha256":  "84f5f58e065db6fd75950137858526e01e202a6746c763d3f7247d9da4649be9",
+                        "size":  12647829,
+                        "source":  "https://github.com/fuldcpp/plugins/releases/download/protocolanalyzer-v1.00/ProtocolAnalyzer-source.zip"
+                    },
+                    {
                         "uuid":  "{be8b377f-4a88-43ce-9fd0-4166dfbc91ef}",
                         "name":  "Punctuator",
                         "version":  "1",

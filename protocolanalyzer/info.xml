@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Canonical MinGW-w64 x64 package template. build_dist.ps1 validates all
+     metadata, regenerates the file list in an isolated staging directory, and
+     never writes generated data back to this source file. -->
+<dcext>
+  <UUID>{b6bbc82c-dadf-447d-94c2-c1bc274e2e76}</UUID>
+  <Name>Protocol Analyzer</Name>
+  <Version>1.00</Version>
+  <ApiVersion>8</ApiVersion>
+  <Author>iceman50</Author>
+  <Description>Protocol analyzer for ADC and NMDC.</Description>
+  <Website>https://github.com/iceman50/DC-Protocol-Analyzer</Website>
+  <Plugin Platform="pe-x64">ProtocolAnalyzer.dll</Plugin>
+  <Files>
+    <File Platform="pe-x64">ProtocolAnalyzer.dbg</File>
+    <File>ProtocolAnalyzer.ico</File>
+    <File>LICENSE.txt</File>
+    <File>GPL-2.0.txt</File>
+    <File>LibDWT-License.txt</File>
+    <File>THIRD-PARTY.txt</File>
+    <File>BUILD-PROVENANCE.txt</File>
+    <File>SHA256SUMS</File>
+  </Files>
+</dcext>
