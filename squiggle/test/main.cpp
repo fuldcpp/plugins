@@ -13,6 +13,7 @@
 
 #include <windows.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cwctype>
 #include <string>
@@ -151,6 +152,12 @@ void CheckTokenizer() {
     ExpectTokens(L"don't stop", L"don't|stop");
     ExpectTokens(L"'citat'", L"citat");
 
+    // Siffror som hor till ordet hoppas over, men en ensam siffra mitt i ett
+    // annars alfabetiskt ord ar ett feltryck och ska kontrolleras.
+    ExpectTokens(L"en mp3 fran x64 win10 24bit 320kbps", L"en|fran");
+    ExpectTokens(L"jag har ett ab0nemang och behover hjä1p",
+                 L"jag|har|ett|ab0nemang|och|behover|hjä1p");
+
     // Langa sammansattningar ar hela poangen med plugin-programmet och far inte
     // tystas av en langdgrans.
     ExpectTokens(L"arbetsmarknadsdepartementet", L"arbetsmarknadsdepartementet");
@@ -198,6 +205,28 @@ void CheckDictionary(Speller& speller) {
 
     speller.IgnoreForSession(L"Rödbetssallad");
     Expect(speller.IsCorrect(L"rödbetssallad"), L"... aven med aao i ordet");
+}
+
+// Ett ensamt feltryck -- en siffra mitt i ett ord -- ska fangas trots att
+// Windows-motorn inte har nagon asikt om ord med siffror i.
+void CheckDigitSubstitution(Speller& speller) {
+    std::fputs("\nSiffra i ordet:\n", stdout);
+
+    // Motorn tillfragas aldrig: siffran ar sjalva felet, oavsett ordlista.
+    Expect(!speller.IsCorrect(L"ab0nemang"), L"\"ab0nemang\" ar fel");
+    Expect(!speller.IsCorrect(L"hjä1p"), L"\"hjä1p\" ar fel");
+
+    if (HasLanguage(speller, L"sv")) {
+        const std::vector<std::wstring> s = speller.Suggest(L"hjä1p", 3);
+        Expect(std::find(s.begin(), s.end(), L"hjälp") != s.end(),
+               L"sv: \"hjä1p\" foreslar \"hjälp\"");
+
+        const std::vector<std::wstring> a = speller.Suggest(L"ab0nemang", 3);
+        Expect(std::find(a.begin(), a.end(), L"abonnemang") != a.end(),
+               L"sv: \"ab0nemang\" foreslar \"abonnemang\"");
+    } else {
+        std::fputs("  (hoppar over forslagen - ingen sv-ordlista installerad)\n", stdout);
+    }
 }
 
 }  // namespace
@@ -313,6 +342,7 @@ int main(int argc, char** argv) {
     CheckWideCharacterClassification();
     CheckTokenizer();
     CheckDictionary(speller);
+    CheckDigitSubstitution(speller);
     CheckWriteFailuresAreNoticed();
 
     speller.Shutdown();

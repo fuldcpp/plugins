@@ -24,6 +24,33 @@ const CLSID kSpellCheckerFactory =
 
 ISpellChecker* AsChecker(void* p) { return static_cast<ISpellChecker*>(p); }
 
+bool HasDigit(const std::wstring& word) {
+    return std::any_of(word.begin(), word.end(),
+                       [](wchar_t c) { return c >= L'0' && c <= L'9'; });
+}
+
+// Substitutes the letter each digit was most likely typed for. Returns empty
+// when a digit has no sensible letter, since guessing further would invent a
+// correction the user never meant.
+std::wstring DeLeet(const std::wstring& word) {
+    std::wstring out = word;
+    for (wchar_t& c : out) {
+        switch (c) {
+            case L'0': c = L'o'; break;
+            case L'1': c = L'l'; break;
+            case L'3': c = L'e'; break;
+            case L'4': c = L'a'; break;
+            case L'5': c = L's'; break;
+            case L'7': c = L't'; break;
+            case L'8': c = L'b'; break;
+            default:
+                if (c >= L'0' && c <= L'9') return {};
+                break;
+        }
+    }
+    return out;
+}
+
 // The host loads plugins on whichever thread it uses for startup, which is not
 // necessarily the GUI thread and is not necessarily an initialised COM apartment
 // yet. Calling this before every CoCreateInstance means the checkers work on
@@ -156,6 +183,14 @@ bool Speller::IsCorrect(const std::wstring& word) {
     const std::wstring folded = Fold(word);
     if (personal_.count(folded) || ignored_.count(folded)) return true;
 
+    // Windows' engine ignores any word containing a digit and reports it clean,
+    // so it can never tell us about "ab0nemang". The tokenizer only lets through
+    // words where a single digit sits between letters, which is a finger slip
+    // rather than a number -- so the digit itself is the mistake, whatever the
+    // surrounding letters happen to spell. "hjä1p" is wrong even though "hjälp"
+    // is not.
+    if (HasDigit(word)) return false;
+
     EnsureOnCurrentThread();
 
     if (auto it = cache_.find(word); it != cache_.end()) return it->second;
@@ -195,6 +230,21 @@ bool Speller::IsCorrect(const std::wstring& word) {
 std::vector<std::wstring> Speller::Suggest(const std::wstring& word, size_t maxCount) {
     std::vector<std::wstring> out;
     if (word.empty()) return out;
+
+    // The engine has no opinion on a word with a digit in it, so ask it about
+    // the letter the digit stands in for instead. That is where the useful
+    // suggestion comes from: "ab0nemang" -> "abonemang" -> "abonnemang".
+    if (HasDigit(word)) {
+        const std::wstring plain = DeLeet(word);
+        if (plain.empty() || plain == word) return out;
+
+        // When the substitution is already a real word, it is the suggestion.
+        if (IsCorrect(plain)) {
+            out.push_back(plain);
+            return out;
+        }
+        return Suggest(plain, maxCount);
+    }
 
     EnsureOnCurrentThread();
 

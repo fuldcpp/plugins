@@ -59,8 +59,22 @@ bool IsIgnoredRun(const std::wstring& run) {
         if (StartsWith(run, p)) return true;
     }
 
-    // Anything holding a digit: version numbers, sizes, ports, "5st", hashes.
-    if (std::any_of(run.begin(), run.end(), IsDigit)) return true;
+    // Digits usually mean this is not prose: version numbers, sizes, ports,
+    // "5st", hashes.
+    //
+    // The exception is a single digit between letters in an otherwise
+    // alphabetic word. That is the classic finger slip -- a zero for an o in
+    // "ab0nemang", a one for an l -- and precisely the mistake worth catching,
+    // since it reads correctly at a glance. Digits at either end, or more than
+    // one of them, still mean a real number: "mp3", "x64", "win10", "24bit".
+    const ptrdiff_t digits = std::count_if(run.begin(), run.end(), IsDigit);
+    if (digits > 0) {
+        const bool fingerSlip =
+            digits == 1 && run.size() >= 4 && !IsDigit(run.front()) && !IsDigit(run.back()) &&
+            std::all_of(run.begin(), run.end(),
+                        [](wchar_t c) { return IsLetter(c) || IsDigit(c); });
+        if (!fingerSlip) return true;
+    }
 
     // Paths, e-mail-ish things, hub addresses, filenames with an extension.
     if (run.find(L'/') != std::wstring::npos) return true;

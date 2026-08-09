@@ -327,7 +327,7 @@ extern "C" DCEXP DCMAIN DCAPI pluginInit(MetaDataPtr info) {
     info->dependencies = nullptr;
     info->numDependencies = 0;
     info->apiVersion = DCAPI_CORE_VER;
-    info->version = 2.4;
+    info->version = 2.5;
 
     return PluginMain;
 }
