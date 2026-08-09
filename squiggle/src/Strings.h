@@ -45,6 +45,8 @@ enum class Str {
     MenuNoSuggestions,
     MenuAddToDictionary,
     MenuIgnoreSession,
+    SaveFailedTitle,
+    SaveFailedFormat,
     AutoCorrectFileHeader,
     Count
 };

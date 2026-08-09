@@ -40,6 +40,11 @@ const wchar_t* const kSwedish[kCount] = {
     /* MenuNoSuggestions     */ L"(inga förslag)",
     /* MenuAddToDictionary   */ L"Lägg till i ordlistan",
     /* MenuIgnoreSession     */ L"Ignorera den här sessionen",
+    /* SaveFailedTitle       */ L"Squiggle – kunde inte spara",
+    /* SaveFailedFormat      */
+        L"Det gick inte att spara. Windows nekade skrivning till:\n\n%s\n\n"
+        L"Mappen är skrivskyddad, så orden du lagt till finns kvar bara tills "
+        L"klienten stängs. Kopiera ut dem härifrån om du vill behålla dem.",
     /* AutoCorrectFileHeader */
         L"# Autokorrigering för Squiggle\n"
         L"#\n"
@@ -79,6 +84,11 @@ const wchar_t* const kEnglish[kCount] = {
     /* MenuNoSuggestions     */ L"(no suggestions)",
     /* MenuAddToDictionary   */ L"Add to dictionary",
     /* MenuIgnoreSession     */ L"Ignore for this session",
+    /* SaveFailedTitle       */ L"Squiggle - could not save",
+    /* SaveFailedFormat      */
+        L"Saving failed. Windows refused to write to:\n\n%s\n\n"
+        L"That folder is read-only, so the words you added will last only until "
+        L"the client closes. Copy them out of here if you want to keep them.",
     /* AutoCorrectFileHeader */
         L"# Autocorrect rules for Squiggle\n"
         L"#\n"

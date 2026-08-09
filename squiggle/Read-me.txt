@@ -108,5 +108,13 @@ Two files sit in the plugin folder, editable by hand if you prefer:
 
 Quickest way there: Configure -> the "Open plugin folder" button.
 
-The folder lives under %LOCALAPPDATA%, in a directory named after the plugin's
-GUID, so it is not somewhere you would stumble across.
+The folder is wherever the client installed the plugin - on a normal install
+that is under %LOCALAPPDATA%, in a directory named after the plugin's GUID, so
+it is not somewhere you would stumble across.
+
+If that folder happens to be read-only, which is what a portable client run from
+under Program Files gives you, nothing can be saved: words you add last until
+the client closes and no further. Squiggle now says so - in the system log, and
+in a message box if it happens while you have Configure open, which is the
+moment where the words are still on screen to copy out. It used to say nothing
+at all, and they simply disappeared.

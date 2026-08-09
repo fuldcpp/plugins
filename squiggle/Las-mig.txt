@@ -103,5 +103,13 @@ I plugin-mappen ligger två filer du kan redigera för hand om du hellre vill:
 
 Enklast dit: Konfigurera -> knappen "Öppna plugin-mappen".
 
-Mappen ligger under %LOCALAPPDATA%, i en mapp döpt efter plugin:ens GUID, så
-den är inget man hittar av en slump.
+Mappen ligger där klienten installerade pluginen — vid en vanlig installation
+under %LOCALAPPDATA%, i en mapp döpt efter plugin:ens GUID, så den är inget man
+hittar av en slump.
+
+Är den mappen skrivskyddad, vilket den blir om man kör en portabel klient från
+Program Files, går ingenting att spara: ord du lägger till finns kvar tills
+klienten stängs och inte längre. Squiggle säger numera till om det — i
+systemloggen, och i en ruta om det händer medan du har Konfigurera öppet, vilket
+är stunden då orden fortfarande står på skärmen att kopiera ut. Förut sa den
+ingenting alls, och de bara försvann.

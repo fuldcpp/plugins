@@ -21,6 +21,7 @@
 #include "SettingsDialog.h"
 #include "Speller.h"
 #include "Strings.h"
+#include "TextFile.h"
 
 namespace {
 
@@ -47,6 +48,17 @@ Speller g_speller;
 
 // Written from the host's timer thread as well as at load time.
 std::atomic<bool> g_installed{false};
+
+std::string Narrow(const std::wstring& text) {
+    if (text.empty()) return {};
+    const int n = ::WideCharToMultiByte(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()),
+                                        nullptr, 0, nullptr, nullptr);
+    if (n <= 0) return {};
+    std::string out(static_cast<size_t>(n), '\0');
+    ::WideCharToMultiByte(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), out.data(), n,
+                          nullptr, nullptr);
+    return out;
+}
 
 void Log(const std::string& message) {
     if (g_log && g_log->log) g_log->log(("Squiggle: " + message).c_str());
@@ -153,6 +165,17 @@ Bool DCAPI OnTimer(dcptr_t, dcptr_t, dcptr_t, Bool*) {
     if (!g_installed) {
         g_installed = ChatInput::EnsureInstalled();
         if (g_installed) Log("kopplad till chattfalten");
+    }
+
+    // A read-only plugin folder cannot be seen from the inside: adding a word
+    // works, the squiggle goes away, and the word is gone at the next start.
+    // One comparison a second turns that into a sentence.
+    static bool saidWriteFailure = false;
+    if (!saidWriteFailure && TextFile::FailureCount() > 0) {
+        saidWriteFailure = true;
+        Log("kan inte spara: " + Narrow(TextFile::WriteFailure()) +
+            ". Mappen ar skrivskyddad, sa egna ord och autokorrigeringar "
+            "forsvinner nar klienten stangs.");
     }
 
     static int ticks = 0;

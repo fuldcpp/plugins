@@ -12,6 +12,7 @@
 #include "Settings.h"
 #include "Speller.h"
 #include "Strings.h"
+#include "TextFile.h"
 
 #include "../res/resource.h"
 
@@ -357,8 +358,23 @@ INT_PTR CALLBACK DialogProc(HWND dlg, UINT msg, WPARAM wParam, LPARAM lParam) {
                     state->working.autoCorrect =
                         ::IsDlgButtonChecked(dlg, IDC_AUTOCORRECT) == BST_CHECKED;
 
+                    const unsigned failedBefore = TextFile::FailureCount();
                     state->speller->SavePersonalText(TextOf(::GetDlgItem(dlg, IDC_PERSONAL)));
                     AutoCorrect::SaveText(TextOf(::GetDlgItem(dlg, IDC_CORRECTIONS)));
+
+                    // The dialog stays open when the words could not be written.
+                    // Closing it would be the last moment they existed anywhere,
+                    // and the user can still copy them out of the box or press
+                    // Cancel. Silently discarding hand-typed words is the one
+                    // outcome worth refusing.
+                    if (TextFile::FailureCount() != failedBefore) {
+                        wchar_t body[1024] = {};
+                        ::wsprintfW(body, T(Str::SaveFailedFormat),
+                                    TextFile::WriteFailure().c_str());
+                        ::MessageBoxW(dlg, body, T(Str::SaveFailedTitle),
+                                      MB_OK | MB_ICONWARNING);
+                        return TRUE;
+                    }
 
                     ::EndDialog(dlg, IDOK);
                     return TRUE;

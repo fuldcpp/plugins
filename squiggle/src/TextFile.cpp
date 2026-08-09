@@ -7,11 +7,31 @@
 // version. See the LICENSE file for details.
 #include "TextFile.h"
 
+#include <mutex>
+
 #include <windows.h>
 
 #include <vector>
 
 namespace TextFile {
+namespace {
+
+// Written from whichever thread saved last: the dialog saves on the GUI thread
+// and AddToPersonal runs from the chat control's.
+std::mutex g_failureMutex;
+std::wstring g_failure;
+unsigned g_failures = 0;
+
+void RememberFailure(const std::wstring& path, DWORD error) {
+    wchar_t code[32] = {};
+    ::wsprintfW(code, L" (Windows-fel %u)", error);
+
+    std::lock_guard<std::mutex> lock(g_failureMutex);
+    g_failure = path + code;
+    ++g_failures;
+}
+
+}  // namespace
 namespace {
 
 const char kBom[] = "\xEF\xBB\xBF";
@@ -69,16 +89,34 @@ bool Write(const std::wstring& path, const std::wstring& text) {
 
     HANDLE file = ::CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file == INVALID_HANDLE_VALUE) return false;
-
-    DWORD written = 0;
-    bool ok = ::WriteFile(file, kBom, 3, &written, nullptr) != FALSE;
-    if (ok && !utf8.empty()) {
-        ok = ::WriteFile(file, utf8.data(), static_cast<DWORD>(utf8.size()), &written, nullptr) != FALSE;
+    if (file == INVALID_HANDLE_VALUE) {
+        RememberFailure(path, ::GetLastError());
+        return false;
     }
 
+    DWORD written = 0;
+    bool ok = ::WriteFile(file, kBom, 3, &written, nullptr) != FALSE && written == 3;
+    if (ok && !utf8.empty()) {
+        ok = ::WriteFile(file, utf8.data(), static_cast<DWORD>(utf8.size()), &written, nullptr) !=
+                 FALSE &&
+             written == utf8.size();
+    }
+
+    // Read before CloseHandle, which sets an error code of its own.
+    const DWORD error = ok ? 0u : ::GetLastError();
     ::CloseHandle(file);
+    if (!ok) RememberFailure(path, error);
     return ok;
+}
+
+std::wstring WriteFailure() {
+    std::lock_guard<std::mutex> lock(g_failureMutex);
+    return g_failure;
+}
+
+unsigned FailureCount() {
+    std::lock_guard<std::mutex> lock(g_failureMutex);
+    return g_failures;
 }
 
 }  // namespace TextFile

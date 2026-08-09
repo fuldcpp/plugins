@@ -25,6 +25,7 @@
 #include "Speller.h"
 #include "Strings.h"
 #include "Text.h"
+#include "TextFile.h"
 #include "Tokenizer.h"
 
 namespace {
@@ -43,6 +44,36 @@ void Expect(bool condition, const std::wstring& what) {
     PrintUtf8(what);
     std::fputs("\n", stdout);
     if (!condition) ++g_failures;
+}
+
+// En skrivning som inte gick igenom fick tidigare se ut som en lyckad: alla sex
+// anropsstallena kastade returvardet. Det som forsvann var egna ord och
+// autokorrigeringar, alltsa sadant anvandaren skrivit in for hand.
+void CheckWriteFailuresAreNoticed() {
+    std::fputs("\nSkrivfel:\n", stdout);
+
+    wchar_t temp[MAX_PATH] = {};
+    const DWORD len = ::GetTempPathW(MAX_PATH, temp);
+    if (len == 0 || len >= MAX_PATH) {
+        std::fputs("  (hoppar over skrivtestet - ingen temp-katalog)\n", stdout);
+        return;
+    }
+
+    const std::wstring dir(temp, len);
+    const unsigned before = TextFile::FailureCount();
+
+    // En katalog som inte finns: CreateFileW misslyckas med ERROR_PATH_NOT_FOUND.
+    const bool wrote = TextFile::Write(dir + L"squiggle-finns-inte\\ord.txt", L"hej");
+    Expect(!wrote && TextFile::FailureCount() == before + 1 &&
+               !TextFile::WriteFailure().empty(),
+           L"en skrivning till en katalog som inte finns upptacks");
+
+    // Och en som gar igenom far inte rakna som ett fel.
+    const std::wstring good = dir + L"squiggle-skrivtest.txt";
+    const bool wroteGood = TextFile::Write(good, L"hej");
+    Expect(wroteGood && TextFile::FailureCount() == before + 1,
+           L"en lyckad skrivning raknas inte som ett fel");
+    ::DeleteFileW(good.c_str());
 }
 
 // The tokens a line produces, joined with '|'. Comparing the whole set at once
@@ -282,6 +313,7 @@ int main(int argc, char** argv) {
     CheckWideCharacterClassification();
     CheckTokenizer();
     CheckDictionary(speller);
+    CheckWriteFailuresAreNoticed();
 
     speller.Shutdown();
 
