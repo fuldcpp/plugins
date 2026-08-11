@@ -16,8 +16,13 @@ if (-not $vs) { throw "Hittade ingen Visual Studio med C++-verktygen installerad
 $install = $vs[0].installationPath
 
 # Generatorns namn ar "Visual Studio <major> <ar>": 17/2022, 18/2026, ...
+# Aret mappas fran major, inte fran catalog.productLineVersion: det faltet gav
+# "18" i stallet for "2026" pa en fardrunner med VS18, vilket blev den ogiltiga
+# generatorn "Visual Studio 18 18". Tabellen ar CMakes egna, fasta namn.
 $major = [int]($vs[0].installationVersion -split '\.')[0]
-$year  = $vs[0].catalog.productLineVersion
+$yearByMajor = @{ 15 = 2017; 16 = 2019; 17 = 2022; 18 = 2026 }
+$year = $yearByMajor[$major]
+if (-not $year) { $year = $vs[0].catalog.productLineVersion }  # okant major: forsok anda
 $generator = "Visual Studio $major $year"
 
 # CMake foljer med Visual Studio; annars far den som ligger i PATH duga.
