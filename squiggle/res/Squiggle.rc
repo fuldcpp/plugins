@@ -7,8 +7,8 @@
    pack.ps1 refuses to build the .dcext if the three disagree. */
 
 VS_VERSION_INFO VERSIONINFO
-    FILEVERSION     2,4,0,0
-    PRODUCTVERSION  2,4,0,0
+    FILEVERSION     2,7,0,0
+    PRODUCTVERSION  2,7,0,0
     FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
     FILEFLAGS       0x0L
     FILEOS          VOS_NT_WINDOWS32
@@ -21,12 +21,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "kaje"
             VALUE "FileDescription",  "Squiggle - spell checking for Direct Connect clients"
-            VALUE "FileVersion",      "2.4.0.0"
+            VALUE "FileVersion",      "2.7.0.0"
             VALUE "InternalName",     "Squiggle"
             VALUE "LegalCopyright",   "Copyright (C) 2026 kaje. GPL v3."
             VALUE "OriginalFilename", "Squiggle-x64.dll"
             VALUE "ProductName",      "Squiggle"
-            VALUE "ProductVersion",   "2.4.0.0"
+            VALUE "ProductVersion",   "2.7.0.0"
         END
     END
     BLOCK "VarFileInfo"
