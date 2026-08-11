@@ -8,6 +8,7 @@
 #include "SettingsDialog.h"
 
 #include "AutoCorrect.h"
+#include "Guard.h"
 #include "Nicks.h"
 #include "Settings.h"
 #include "Speller.h"
@@ -259,8 +260,10 @@ void UpdateStatus(HWND dlg, const DialogState& state) {
     ::SetDlgItemTextW(dlg, IDC_STATUS, text.c_str());
 }
 
-// The install directory is a GUID folder buried in %LOCALAPPDATA%, so the word
-// lists and the bundled readme are effectively unreachable without this.
+// Opens whichever folder the word lists actually ended up in -- normally
+// %LOCALAPPDATA%\Squiggle, but the install directory still, on a machine where
+// the settings folder could not be made. Taken from the personal list's own path
+// so the button cannot end up pointing somewhere the files are not.
 void OpenPluginFolder(HWND dlg, const DialogState& state) {
     if (!state.speller) return;
 
@@ -297,104 +300,111 @@ void Relocalize(HWND dlg, DialogState& state) {
     ::InvalidateRect(::GetDlgItem(dlg, IDC_PREVIEW), nullptr, TRUE);
 }
 
+// See Guard.h. A dialog procedure is called by user32 from inside its own modal
+// loop, so this boundary is no different from the subclass procedure's: what
+// gets thrown here would take the client rather than the dialog. FALSE is what
+// leaves on a fault, which is the same "not handled" the default path returns.
 INT_PTR CALLBACK DialogProc(HWND dlg, UINT msg, WPARAM wParam, LPARAM lParam) {
-    auto* state = reinterpret_cast<DialogState*>(::GetWindowLongPtrW(dlg, GWLP_USERDATA));
+    return Guard::Guarded<INT_PTR>("DialogProc", FALSE, [&]() -> INT_PTR {
+        auto* state = reinterpret_cast<DialogState*>(::GetWindowLongPtrW(dlg, GWLP_USERDATA));
 
-    switch (msg) {
-        case WM_INITDIALOG: {
-            state = reinterpret_cast<DialogState*>(lParam);
-            ::SetWindowLongPtrW(dlg, GWLP_USERDATA, lParam);
+        switch (msg) {
+            case WM_INITDIALOG: {
+                state = reinterpret_cast<DialogState*>(lParam);
+                ::SetWindowLongPtrW(dlg, GWLP_USERDATA, lParam);
 
-            ApplyLanguage(dlg);
-            FillLanguages(dlg, *state);
-            FillThickness(dlg, *state);
-            FillUiLanguage(dlg, *state);
-            ::CheckDlgButton(dlg, IDC_AUTOCORRECT,
-                             state->working.autoCorrect ? BST_CHECKED : BST_UNCHECKED);
-            ::SetDlgItemTextW(dlg, IDC_PERSONAL, state->speller->PersonalAsText().c_str());
-            ::SetDlgItemTextW(dlg, IDC_CORRECTIONS, AutoCorrect::AsText().c_str());
-            UpdateStatus(dlg, *state);
-            return TRUE;
-        }
-
-        case WM_DRAWITEM: {
-            if (wParam == IDC_PREVIEW && state) {
-                DrawPreview(reinterpret_cast<const DRAWITEMSTRUCT*>(lParam), *state);
+                ApplyLanguage(dlg);
+                FillLanguages(dlg, *state);
+                FillThickness(dlg, *state);
+                FillUiLanguage(dlg, *state);
+                ::CheckDlgButton(dlg, IDC_AUTOCORRECT,
+                                 state->working.autoCorrect ? BST_CHECKED : BST_UNCHECKED);
+                ::SetDlgItemTextW(dlg, IDC_PERSONAL, state->speller->PersonalAsText().c_str());
+                ::SetDlgItemTextW(dlg, IDC_CORRECTIONS, AutoCorrect::AsText().c_str());
+                UpdateStatus(dlg, *state);
                 return TRUE;
             }
-            break;
-        }
 
-        case WM_COMMAND: {
-            if (!state) break;
-
-            switch (LOWORD(wParam)) {
-                case IDC_COLOUR:
-                    PickColour(dlg, *state);
+            case WM_DRAWITEM: {
+                if (wParam == IDC_PREVIEW && state) {
+                    DrawPreview(reinterpret_cast<const DRAWITEMSTRUCT*>(lParam), *state);
                     return TRUE;
+                }
+                break;
+            }
 
-                case IDC_OPENFOLDER:
-                    OpenPluginFolder(dlg, *state);
-                    return TRUE;
+            case WM_COMMAND: {
+                if (!state) break;
 
-                case IDC_UILANG:
-                    if (HIWORD(wParam) == CBN_SELCHANGE) {
-                        state->working.uiLanguage = ReadUiLanguage(dlg);
-                        Strings::SetLanguageOverride(state->working.uiLanguage);
-                        Relocalize(dlg, *state);
-                    }
-                    return TRUE;
+                switch (LOWORD(wParam)) {
+                    case IDC_COLOUR:
+                        PickColour(dlg, *state);
+                        return TRUE;
 
-                case IDC_THICKNESS:
-                    if (HIWORD(wParam) == CBN_SELCHANGE) {
-                        const LRESULT sel = ::SendDlgItemMessageW(dlg, IDC_THICKNESS, CB_GETCURSEL, 0, 0);
-                        if (sel != CB_ERR) state->working.thickness = static_cast<int>(sel) + 1;
-                        ::InvalidateRect(::GetDlgItem(dlg, IDC_PREVIEW), nullptr, TRUE);
-                    }
-                    return TRUE;
+                    case IDC_OPENFOLDER:
+                        OpenPluginFolder(dlg, *state);
+                        return TRUE;
 
-                case IDOK: {
-                    ReadLanguages(dlg, *state);
-                    state->working.autoCorrect =
-                        ::IsDlgButtonChecked(dlg, IDC_AUTOCORRECT) == BST_CHECKED;
+                    case IDC_UILANG:
+                        if (HIWORD(wParam) == CBN_SELCHANGE) {
+                            state->working.uiLanguage = ReadUiLanguage(dlg);
+                            Strings::SetLanguageOverride(state->working.uiLanguage);
+                            Relocalize(dlg, *state);
+                        }
+                        return TRUE;
 
-                    const unsigned failedBefore = TextFile::FailureCount();
-                    state->speller->SavePersonalText(TextOf(::GetDlgItem(dlg, IDC_PERSONAL)));
-                    AutoCorrect::SaveText(TextOf(::GetDlgItem(dlg, IDC_CORRECTIONS)));
+                    case IDC_THICKNESS:
+                        if (HIWORD(wParam) == CBN_SELCHANGE) {
+                            const LRESULT sel =
+                                ::SendDlgItemMessageW(dlg, IDC_THICKNESS, CB_GETCURSEL, 0, 0);
+                            if (sel != CB_ERR) state->working.thickness = static_cast<int>(sel) + 1;
+                            ::InvalidateRect(::GetDlgItem(dlg, IDC_PREVIEW), nullptr, TRUE);
+                        }
+                        return TRUE;
 
-                    // The dialog stays open when the words could not be written.
-                    // Closing it would be the last moment they existed anywhere,
-                    // and the user can still copy them out of the box or press
-                    // Cancel. Silently discarding hand-typed words is the one
-                    // outcome worth refusing.
-                    if (TextFile::FailureCount() != failedBefore) {
-                        wchar_t body[1024] = {};
-                        ::wsprintfW(body, T(Str::SaveFailedFormat),
-                                    TextFile::WriteFailure().c_str());
-                        ::MessageBoxW(dlg, body, T(Str::SaveFailedTitle),
-                                      MB_OK | MB_ICONWARNING);
+                    case IDOK: {
+                        ReadLanguages(dlg, *state);
+                        state->working.autoCorrect =
+                            ::IsDlgButtonChecked(dlg, IDC_AUTOCORRECT) == BST_CHECKED;
+
+                        const unsigned failedBefore = TextFile::FailureCount();
+                        state->speller->SavePersonalText(TextOf(::GetDlgItem(dlg, IDC_PERSONAL)));
+                        AutoCorrect::SaveText(TextOf(::GetDlgItem(dlg, IDC_CORRECTIONS)));
+
+                        // The dialog stays open when the words could not be
+                        // written. Closing it would be the last moment they
+                        // existed anywhere, and the user can still copy them out
+                        // of the box or press Cancel. Silently discarding
+                        // hand-typed words is the one outcome worth refusing.
+                        if (TextFile::FailureCount() != failedBefore) {
+                            wchar_t body[1024] = {};
+                            ::wsprintfW(body, T(Str::SaveFailedFormat),
+                                        TextFile::WriteFailure().c_str());
+                            ::MessageBoxW(dlg, body, T(Str::SaveFailedTitle),
+                                          MB_OK | MB_ICONWARNING);
+                            return TRUE;
+                        }
+
+                        ::EndDialog(dlg, IDOK);
                         return TRUE;
                     }
 
-                    ::EndDialog(dlg, IDOK);
-                    return TRUE;
+                    case IDCANCEL:
+                        ::EndDialog(dlg, IDCANCEL);
+                        return TRUE;
+
+                    default:
+                        break;
                 }
-
-                case IDCANCEL:
-                    ::EndDialog(dlg, IDCANCEL);
-                    return TRUE;
-
-                default:
-                    break;
+                break;
             }
-            break;
+
+            default:
+                break;
         }
 
-        default:
-            break;
-    }
-
-    return FALSE;
+        return FALSE;
+    });
 }
 
 }  // namespace

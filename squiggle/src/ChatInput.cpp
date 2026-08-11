@@ -8,6 +8,7 @@
 #include "ChatInput.h"
 
 #include "AutoCorrect.h"
+#include "Guard.h"
 #include "Nicks.h"
 #include "Settings.h"
 #include "Speller.h"
@@ -464,123 +465,145 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
                           UINT_PTR id, DWORD_PTR ref) {
     Context* ctx = reinterpret_cast<Context*>(ref);
 
-    switch (msg) {
-        case WM_NCDESTROY: {
-            ::RemoveWindowSubclass(hwnd, EditProc, id);
-            std::vector<HWND>& attached = Attached();
-            attached.erase(std::remove(attached.begin(), attached.end(), hwnd), attached.end());
-            Nicks::Forget(hwnd);
-            delete ctx;
-            return ::DefSubclassProc(hwnd, msg, wParam, lParam);
+    // Passing the message on, at most once. Every case below goes through this
+    // rather than calling DefSubclassProc itself, so that a fault in the
+    // plugin's own work afterwards cannot hand the control the same message a
+    // second time -- which for WM_CHAR is a character typed twice.
+    bool passedOn = false;
+    LRESULT passed = 0;
+    auto pass = [&]() -> LRESULT {
+        if (!passedOn) {
+            passedOn = true;
+            passed = ::DefSubclassProc(hwnd, msg, wParam, lParam);
         }
+        return passed;
+    };
 
-        case WM_PAINT: {
-            const LRESULT result = ::DefSubclassProc(hwnd, msg, wParam, lParam);
-            if (ctx && !ctx->bad.empty()) {
-                // A non-null wParam is a device context the caller wants painted
-                // into; drawing to our own would put the squiggles on the screen
-                // instead of on whatever surface was asked for.
-                if (HDC provided = reinterpret_cast<HDC>(wParam)) {
-                    DrawSquiggles(hwnd, provided, *ctx);
-                } else if (HDC hdc = ::GetDC(hwnd)) {
-                    DrawSquiggles(hwnd, hdc, *ctx);
-                    ::ReleaseDC(hwnd, hdc);
+    // See Guard.h: this is called from inside user32's message dispatch, and
+    // nothing may be thrown back into it.
+    try {
+        switch (msg) {
+            case WM_NCDESTROY: {
+                ::RemoveWindowSubclass(hwnd, EditProc, id);
+                std::vector<HWND>& attached = Attached();
+                attached.erase(std::remove(attached.begin(), attached.end(), hwnd),
+                               attached.end());
+                Nicks::Forget(hwnd);
+                delete ctx;
+                return pass();
+            }
+
+            case WM_PAINT: {
+                const LRESULT result = pass();
+                if (ctx && !ctx->bad.empty()) {
+                    // A non-null wParam is a device context the caller wants
+                    // painted into; drawing to our own would put the squiggles
+                    // on the screen instead of on whatever surface was asked
+                    // for.
+                    if (HDC provided = reinterpret_cast<HDC>(wParam)) {
+                        DrawSquiggles(hwnd, provided, *ctx);
+                    } else if (HDC hdc = ::GetDC(hwnd)) {
+                        DrawSquiggles(hwnd, hdc, *ctx);
+                        ::ReleaseDC(hwnd, hdc);
+                    }
                 }
+                return result;
             }
-            return result;
-        }
 
-        // Clicking into the message box is the natural moment to refresh the
-        // nick list: it is on the GUI thread, and it happens right before the
-        // user types the names of the people they are talking to.
-        case WM_SETFOCUS: {
-            const LRESULT result = ::DefSubclassProc(hwnd, msg, wParam, lParam);
-            Nicks::HarvestFrom(hwnd);
-            if (ctx) RefreshAfterEdit(hwnd, *ctx);
-            return result;
-        }
-
-        case WM_CONTEXTMENU: {
-            if (!ctx) break;
-            POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-            if (pt.x == -1 && pt.y == -1) {
-                // Keyboard-invoked: anchor on the caret.
-                const LRESULT p = ::SendMessageW(hwnd, EM_POSFROMCHAR,
-                                                 static_cast<WPARAM>(SelectionOf(hwnd).end), 0);
-                pt.x = (p == -1) ? 0 : static_cast<short>(LOWORD(p));
-                pt.y = (p == -1) ? 0 : static_cast<short>(HIWORD(p));
-                ::ClientToScreen(hwnd, &pt);
+            // Clicking into the message box is the natural moment to refresh the
+            // nick list: it is on the GUI thread, and it happens right before the
+            // user types the names of the people they are talking to.
+            case WM_SETFOCUS: {
+                const LRESULT result = pass();
+                Nicks::HarvestFrom(hwnd);
+                if (ctx) RefreshAfterEdit(hwnd, *ctx);
+                return result;
             }
-            if (ShowSuggestions(hwnd, *ctx, pt)) return 0;
-            break;  // not on a misspelling: let the host show its own menu
-        }
 
-        // Autocorrect has to run before the control sees the key, because the
-        // host sends the chat message on Enter and the correction must already
-        // be in the text by then.
-        case WM_CHAR: {
-            const wchar_t ch = static_cast<wchar_t>(wParam);
-            const bool boundary = EndsWord(ch);
-            if (ctx && boundary) ApplyAutoCorrect(hwnd, *ctx);
-
-            const LRESULT result = ::DefSubclassProc(hwnd, msg, wParam, lParam);
-
-            // Typing on past the correction retires the chance to undo it.
-            if (ctx && !boundary) ctx->lastCorrection.valid = false;
-            if (ctx) RefreshAfterEdit(hwnd, *ctx);
-            return result;
-        }
-
-        case WM_KEYDOWN: {
-            // Ctrl+Shift+Z is redo, and must be left to the control.
-            if (ctx && wParam == 'Z' && (::GetKeyState(VK_CONTROL) & 0x8000) &&
-                !(::GetKeyState(VK_SHIFT) & 0x8000)) {
-                if (UndoAutoCorrect(hwnd, *ctx)) {
-                    RefreshAfterEdit(hwnd, *ctx);
-                    return 0;
+            case WM_CONTEXTMENU: {
+                if (!ctx) break;
+                POINT pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+                if (pt.x == -1 && pt.y == -1) {
+                    // Keyboard-invoked: anchor on the caret.
+                    const LRESULT p = ::SendMessageW(
+                        hwnd, EM_POSFROMCHAR, static_cast<WPARAM>(SelectionOf(hwnd).end), 0);
+                    pt.x = (p == -1) ? 0 : static_cast<short>(LOWORD(p));
+                    pt.y = (p == -1) ? 0 : static_cast<short>(HIWORD(p));
+                    ::ClientToScreen(hwnd, &pt);
                 }
+                if (ShowSuggestions(hwnd, *ctx, pt)) return 0;
+                break;  // not on a misspelling: let the host show its own menu
             }
-            // Enter may be consumed here rather than reaching WM_CHAR.
-            if (ctx && wParam == VK_RETURN) ApplyAutoCorrect(hwnd, *ctx);
 
-            const LRESULT result = ::DefSubclassProc(hwnd, msg, wParam, lParam);
-            if (ctx) RefreshAfterEdit(hwnd, *ctx);
-            return result;
+            // Autocorrect has to run before the control sees the key, because the
+            // host sends the chat message on Enter and the correction must already
+            // be in the text by then.
+            case WM_CHAR: {
+                const wchar_t ch = static_cast<wchar_t>(wParam);
+                const bool boundary = EndsWord(ch);
+                if (ctx && boundary) ApplyAutoCorrect(hwnd, *ctx);
+
+                const LRESULT result = pass();
+
+                // Typing on past the correction retires the chance to undo it.
+                if (ctx && !boundary) ctx->lastCorrection.valid = false;
+                if (ctx) RefreshAfterEdit(hwnd, *ctx);
+                return result;
+            }
+
+            case WM_KEYDOWN: {
+                // Ctrl+Shift+Z is redo, and must be left to the control.
+                if (ctx && wParam == 'Z' && (::GetKeyState(VK_CONTROL) & 0x8000) &&
+                    !(::GetKeyState(VK_SHIFT) & 0x8000)) {
+                    if (UndoAutoCorrect(hwnd, *ctx)) {
+                        RefreshAfterEdit(hwnd, *ctx);
+                        return 0;
+                    }
+                }
+                // Enter may be consumed here rather than reaching WM_CHAR.
+                if (ctx && wParam == VK_RETURN) ApplyAutoCorrect(hwnd, *ctx);
+
+                const LRESULT result = pass();
+                if (ctx) RefreshAfterEdit(hwnd, *ctx);
+                return result;
+            }
+
+            // Anything else that can change the text or move the caret. WM_KEYUP is
+            // in the list because Delete never produces a WM_CHAR.
+            case WM_KEYUP:
+            case WM_PASTE:
+            case WM_CUT:
+            case WM_CLEAR:
+            case WM_UNDO:
+            case WM_SETTEXT:
+            case WM_LBUTTONUP:
+            case EM_REPLACESEL: {
+                const LRESULT result = pass();
+                if (ctx) RefreshAfterEdit(hwnd, *ctx);
+                return result;
+            }
+
+            // Scrolling blits the existing pixels, so stale squiggles would smear
+            // along with the text unless the whole control is repainted.
+            case WM_VSCROLL:
+            case WM_HSCROLL:
+            case WM_MOUSEWHEEL:
+            case WM_SIZE:
+            case EM_LINESCROLL:
+            case EM_SCROLL: {
+                const LRESULT result = pass();
+                if (ctx && !ctx->bad.empty()) ::InvalidateRect(hwnd, nullptr, TRUE);
+                return result;
+            }
+
+            default:
+                break;
         }
-
-        // Anything else that can change the text or move the caret. WM_KEYUP is
-        // in the list because Delete never produces a WM_CHAR.
-        case WM_KEYUP:
-        case WM_PASTE:
-        case WM_CUT:
-        case WM_CLEAR:
-        case WM_UNDO:
-        case WM_SETTEXT:
-        case WM_LBUTTONUP:
-        case EM_REPLACESEL: {
-            const LRESULT result = ::DefSubclassProc(hwnd, msg, wParam, lParam);
-            if (ctx) RefreshAfterEdit(hwnd, *ctx);
-            return result;
-        }
-
-        // Scrolling blits the existing pixels, so stale squiggles would smear
-        // along with the text unless the whole control is repainted.
-        case WM_VSCROLL:
-        case WM_HSCROLL:
-        case WM_MOUSEWHEEL:
-        case WM_SIZE:
-        case EM_LINESCROLL:
-        case EM_SCROLL: {
-            const LRESULT result = ::DefSubclassProc(hwnd, msg, wParam, lParam);
-            if (ctx && !ctx->bad.empty()) ::InvalidateRect(hwnd, nullptr, TRUE);
-            return result;
-        }
-
-        default:
-            break;
+    } catch (...) {
+        Guard::NoteCaught("EditProc");
     }
 
-    return ::DefSubclassProc(hwnd, msg, wParam, lParam);
+    return pass();
 }
 
 // The message box in every FulDC++ hub and PM frame is a plain multiline Edit.
@@ -741,21 +764,29 @@ void EnsureRelayWindow() {
     AttachExisting();
 }
 
+// A message hook is called by user32 from inside SendMessage, on frames that
+// belong to the host and to Windows. See Guard.h: an exception thrown here does
+// not unwind to a handler, it ends the client. The hook is passed on either way,
+// because the next one in the chain is not ours to drop.
 LRESULT CALLBACK CallWndProc(int code, WPARAM wParam, LPARAM lParam) {
-    if (code == HC_ACTION) {
-        EnsureRelayWindow();
+    try {
+        if (code == HC_ACTION) {
+            EnsureRelayWindow();
 
-        // Nothing is subclassed unless the relay is up, so that "something is
-        // attached" always implies "there is a way to reach the GUI thread and
-        // detach it again".
-        if (!g_relay.load()) return ::CallNextHookEx(nullptr, code, wParam, lParam);
+            // Nothing is subclassed unless the relay is up, so that "something
+            // is attached" always implies "there is a way to reach the GUI
+            // thread and detach it again".
+            if (!g_relay.load()) return ::CallNextHookEx(nullptr, code, wParam, lParam);
 
-        const CWPSTRUCT* cwp = reinterpret_cast<const CWPSTRUCT*>(lParam);
-        // WM_SETFOCUS is the first moment the control is guaranteed to be fully
-        // built and parented, which WM_CREATE is not.
-        if (cwp && (cwp->message == WM_SETFOCUS || cwp->message == WM_MOUSEACTIVATE)) {
-            MaybeAttach(cwp->hwnd);
+            const CWPSTRUCT* cwp = reinterpret_cast<const CWPSTRUCT*>(lParam);
+            // WM_SETFOCUS is the first moment the control is guaranteed to be
+            // fully built and parented, which WM_CREATE is not.
+            if (cwp && (cwp->message == WM_SETFOCUS || cwp->message == WM_MOUSEACTIVATE)) {
+                MaybeAttach(cwp->hwnd);
+            }
         }
+    } catch (...) {
+        Guard::NoteCaught("CallWndProc");
     }
     return ::CallNextHookEx(nullptr, code, wParam, lParam);
 }

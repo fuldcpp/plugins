@@ -16,11 +16,13 @@
 #include <algorithm>
 #include <cstdio>
 #include <cwctype>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "AutoCorrect.h"
+#include "Guard.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
 #include "Speller.h"
@@ -75,6 +77,36 @@ void CheckWriteFailuresAreNoticed() {
     Expect(wroteGood && TextFile::FailureCount() == before + 1,
            L"en lyckad skrivning raknas inte som ett fel");
     ::DeleteFileW(good.c_str());
+}
+
+// Ett undantag som lamnar en callback unwindar inte till nagot som kan fanga
+// det: det avslutar klienten. Systerpluginen dodade FulDC++ ungefar en gang i
+// sekunden pa det viset. Guard ska svalja det, lamna tillbaka reservvardet och
+// skriva en rad - en rad, inte en per tangenttryckning.
+void CheckCallbacksSwallowExceptions() {
+    std::fputs("\nUndantag i callbacks:\n", stdout);
+
+    static std::vector<std::string> lines;
+    lines.clear();
+    Guard::SetLogger([](const std::string& line) { lines.push_back(line); });
+
+    const int threw = Guard::Guarded<int>("Testfall", -1, []() -> int {
+        throw std::runtime_error("provfel");
+    });
+    // Samma stalle igen: ska svaljas lika tyst, men inte loggas en gang till.
+    const int again = Guard::Guarded<int>("Testfall", -1, []() -> int {
+        throw std::runtime_error("provfel");
+    });
+    // Och ett anrop som gar bra far inte kosta nagot.
+    const int fine = Guard::Guarded<int>("Testfall", -1, []() -> int { return 7; });
+
+    Guard::SetLogger(nullptr);
+
+    Expect(threw == -1 && again == -1, L"undantaget svaljs och reservvardet lamnas");
+    Expect(fine == 7, L"ett lyckat anrop paverkas inte");
+    Expect(lines.size() == 1 && lines[0].find("Testfall") != std::string::npos &&
+               lines[0].find("provfel") != std::string::npos,
+           L"felet loggas en gang, inte en per anrop");
 }
 
 // The tokens a line produces, joined with '|'. Comparing the whole set at once
@@ -344,6 +376,7 @@ int main(int argc, char** argv) {
     CheckDictionary(speller);
     CheckDigitSubstitution(speller);
     CheckWriteFailuresAreNoticed();
+    CheckCallbacksSwallowExceptions();
 
     speller.Shutdown();
 

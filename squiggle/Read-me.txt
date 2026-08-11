@@ -101,20 +101,23 @@ Only one language is accepted?
 FILES
 -----
 
-Two files sit in the plugin folder, editable by hand if you prefer:
+Three files sit in %LOCALAPPDATA%\Squiggle, editable by hand if you prefer:
 
-  personal-words.txt   personal words, one per line
-  autocorrect.txt      autocorrect rules, one per line, format wrong=right
+  personal-words.txt        personal words, one per line
+  autocorrect.txt           autocorrect rules, one per line, format wrong=right
+  squiggle-settings.txt     colour, thickness and the language ticks
 
 Quickest way there: Configure -> the "Open plugin folder" button.
 
-The folder is wherever the client installed the plugin - on a normal install
-that is under %LOCALAPPDATA%, in a directory named after the plugin's GUID, so
-it is not somewhere you would stumble across.
+They used to sit in the plugin folder, wherever the client installed the plugin.
+The client empties that folder every time the plugin is updated - measured, on
+two installs in a row - so personal words and autocorrect rules went with every
+new version, silently. They now live outside everything the client owns. Lists
+in the old place come along the first time the new version starts; the originals
+are left where they were.
 
-If that folder happens to be read-only, which is what a portable client run from
-under Program Files gives you, nothing can be saved: words you add last until
-the client closes and no further. Squiggle now says so - in the system log, and
-in a message box if it happens while you have Configure open, which is the
+If the folder happens to be read-only, nothing can be saved: words you add last
+until the client closes and no further. Squiggle says so - in the system log,
+and in a message box if it happens while you have Configure open, which is the
 moment where the words are still on screen to copy out. It used to say nothing
 at all, and they simply disappeared.

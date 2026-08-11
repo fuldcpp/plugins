@@ -16,6 +16,7 @@
 
 #include "AutoCorrect.h"
 #include "ChatInput.h"
+#include "Guard.h"
 #include "Nicks.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
@@ -64,17 +65,45 @@ void Log(const std::string& message) {
     if (g_log && g_log->log) g_log->log(("Squiggle: " + message).c_str());
 }
 
-// Word lists live next to the plugin binary, inside the per-plugin install
-// directory the host already creates for us.
+// Where the word lists used to live: next to the plugin binary, inside the
+// per-plugin install directory the host creates for us.
 std::wstring PluginFilePath(const wchar_t* name) {
-    wchar_t path[MAX_PATH] = {};
-    const DWORD len = ::GetModuleFileNameW(g_instance, path, MAX_PATH);
-    if (len == 0 || len >= MAX_PATH) return {};
+    const std::wstring dir = Settings::DataDirectory();
+    return dir.empty() ? std::wstring() : dir + name;
+}
 
-    std::wstring s(path, len);
-    const size_t slash = s.find_last_of(L"\\/");
-    if (slash == std::wstring::npos) return {};
-    return s.substr(0, slash + 1) + name;
+// Where they live now: %LOCALAPPDATA%\Squiggle\, with the old place read once so
+// that nothing has to be typed again.
+//
+// Installing a new version of a plugin empties its install directory -- measured
+// on two installs in a row, on two plugins. personal-words.txt is words the user
+// added one at a time over months, so that directory is precisely the wrong
+// place for it: every update took the lot, quietly.
+//
+// Three places to look, newest first: the settings directory, then the install
+// directory, then the install directory under the name the file had while the
+// plugin was Swedish, which MigrateFile has already renamed by the time this
+// runs. A copy is taken rather than the original moved: the next install empties
+// that directory anyway, and a file nobody reads costs nothing while a deleted
+// one cannot be recovered.
+std::wstring DataFilePath(const wchar_t* name) {
+    const std::wstring old = PluginFilePath(name);
+    const std::wstring dir = Settings::SettingsDirectory();
+    if (dir.empty()) return old;
+
+    const std::wstring path = dir + name;
+    if (::GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES) return path;
+    if (old.empty() || ::GetFileAttributesW(old.c_str()) == INVALID_FILE_ATTRIBUTES) return path;
+
+    // TRUE: never over a file that is already there.
+    if (!::CopyFileW(old.c_str(), path.c_str(), TRUE)) {
+        Log("kunde inte kopiera " + Narrow(name) + " till " + Narrow(dir) +
+            " - fortsatter i den gamla mappen");
+        return old;
+    }
+
+    Log("tog med " + Narrow(name) + " till " + Narrow(dir));
+    return path;
 }
 
 // Renames a data file from an older release, but never over a file that already
@@ -162,34 +191,40 @@ void RefreshLanguagesOnGui() {
 // that belong to the GUI thread. Installing the hook is the one exception, and
 // it deliberately does no subclassing of its own.
 Bool DCAPI OnTimer(dcptr_t, dcptr_t, dcptr_t, Bool*) {
-    if (!g_installed) {
-        g_installed = ChatInput::EnsureInstalled();
-        if (g_installed) Log("kopplad till chattfalten");
-    }
+    return Guard::Guarded<Bool>("OnTimer", False, []() -> Bool {
+        if (!g_installed) {
+            g_installed = ChatInput::EnsureInstalled();
+            if (g_installed) Log("kopplad till chattfalten");
+        }
 
-    // A read-only plugin folder cannot be seen from the inside: adding a word
-    // works, the squiggle goes away, and the word is gone at the next start.
-    // One comparison a second turns that into a sentence.
-    static bool saidWriteFailure = false;
-    if (!saidWriteFailure && TextFile::FailureCount() > 0) {
-        saidWriteFailure = true;
-        Log("kan inte spara: " + Narrow(TextFile::WriteFailure()) +
-            ". Mappen ar skrivskyddad, sa egna ord och autokorrigeringar "
-            "forsvinner nar klienten stangs.");
-    }
+        // A read-only plugin folder cannot be seen from the inside: adding a
+        // word works, the squiggle goes away, and the word is gone at the next
+        // start. One comparison a second turns that into a sentence.
+        static bool saidWriteFailure = false;
+        if (!saidWriteFailure && TextFile::FailureCount() > 0) {
+            saidWriteFailure = true;
+            Log("kan inte spara: " + Narrow(TextFile::WriteFailure()) +
+                ". Mappen ar skrivskyddad, sa egna ord och autokorrigeringar "
+                "forsvinner nar klienten stangs.");
+        }
 
-    static int ticks = 0;
-    if (++ticks >= 30) {
-        ticks = 0;
-        ChatInput::RunOnGui(&RefreshLanguagesOnGui);
-    }
+        // The speller itself may only be touched from the GUI thread, so the
+        // periodic language re-check is marshalled there.
+        static int ticks = 0;
+        if (++ticks >= 30) {
+            ticks = 0;
+            ChatInput::RunOnGui(&RefreshLanguagesOnGui);
+        }
 
-    return True;
+        return True;
+    });
 }
 
 Bool DCAPI OnUiCreated(dcptr_t, dcptr_t, dcptr_t, Bool*) {
-    if (!g_installed) g_installed = ChatInput::EnsureInstalled();
-    return True;
+    return Guard::Guarded<Bool>("OnUiCreated", False, []() -> Bool {
+        if (!g_installed) g_installed = ChatInput::EnsureInstalled();
+        return True;
+    });
 }
 
 bool Startup(DCCorePtr core) {
@@ -200,9 +235,14 @@ bool Startup(DCCorePtr core) {
     g_log = reinterpret_cast<DCLogPtr>(
         core->query_interface(DCINTF_LOGGING, DCINTF_LOGGING_VER));
 
+    // Before anything that can fail, so that a fault caught at a callback
+    // boundary has somewhere to be written.
+    Guard::SetLogger(&Log);
+
     g_config = reinterpret_cast<DCConfigPtr>(
         core->query_interface(DCINTF_CONFIG, DCINTF_CONFIG_VER));
     Settings::Bind(g_config, kGuid);
+    Settings::SetModule(g_instance);
     CurrentSettings().Load();
 
     // Follow the client's own language, so the plugin speaks whatever the rest
@@ -222,10 +262,10 @@ bool Startup(DCCorePtr core) {
     MigrateFile(L"egna-ord.txt", L"personal-words.txt");
     MigrateFile(L"autokorrigering.txt", L"autocorrect.txt");
 
-    g_speller.SetPersonalPath(PluginFilePath(L"personal-words.txt"));
+    g_speller.SetPersonalPath(DataFilePath(L"personal-words.txt"));
     g_speller.LoadPersonal();
 
-    AutoCorrect::SetPath(PluginFilePath(L"autocorrect.txt"));
+    AutoCorrect::SetPath(DataFilePath(L"autocorrect.txt"));
     AutoCorrect::Load();
 
     LogActiveLanguages();
@@ -265,6 +305,7 @@ void Teardown() {
     g_installed = false;
     g_hooks = nullptr;
     g_log = nullptr;
+    Guard::SetLogger(nullptr);
 
     // The host's config interface goes away with the plugin; leaving the pointer
     // bound means a later Save() calls through it.
@@ -283,24 +324,28 @@ void ShowConfiguration() {
 }
 
 Bool DCAPI PluginMain(PluginState state, DCCorePtr core, dcptr_t) {
-    switch (state) {
-        case ON_INSTALL:
-        case ON_LOAD:
-        case ON_LOAD_RUNTIME:
-            return Startup(core) ? True : False;
+    // False is the honest answer for a load that threw: the host is told the
+    // plugin did not start, rather than being left with one that half did.
+    return Guard::Guarded<Bool>("PluginMain", False, [&]() -> Bool {
+        switch (state) {
+            case ON_INSTALL:
+            case ON_LOAD:
+            case ON_LOAD_RUNTIME:
+                return Startup(core) ? True : False;
 
-        case ON_CONFIGURE:
-            ShowConfiguration();
-            return True;
+            case ON_CONFIGURE:
+                ShowConfiguration();
+                return True;
 
-        case ON_UNLOAD:
-        case ON_UNINSTALL:
-            Teardown();
-            return True;
+            case ON_UNLOAD:
+            case ON_UNINSTALL:
+                Teardown();
+                return True;
 
-        default:
-            return False;
-    }
+            default:
+                return False;
+        }
+    });
 }
 
 }  // namespace

@@ -13,6 +13,7 @@ add_library(Squiggle SHARED
     src/Plugin.cpp
     src/AutoCorrect.cpp
     src/ChatInput.cpp
+    src/Guard.cpp
     src/Nicks.cpp
     src/Settings.cpp
     src/SettingsDialog.cpp
@@ -49,6 +50,7 @@ endif()
 add_executable(squiggletest
     test/main.cpp
     src/AutoCorrect.cpp
+    src/Guard.cpp
     src/Nicks.cpp
     src/Settings.cpp
     src/SettingsDialog.cpp

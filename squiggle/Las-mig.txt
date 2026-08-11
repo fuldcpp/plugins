@@ -96,20 +96,24 @@ Bara svenska ord godkänns?
 FILER
 -----
 
-I plugin-mappen ligger två filer du kan redigera för hand om du hellre vill:
+I mappen %LOCALAPPDATA%\Squiggle ligger tre filer du kan redigera för hand om du
+hellre vill:
 
-  personal-words.txt   ett ord per rad
-  autocorrect.txt      en regel per rad, formatet fel=rätt
+  personal-words.txt        ett ord per rad
+  autocorrect.txt           en regel per rad, formatet fel=rätt
+  squiggle-settings.txt     färg, tjocklek och språkval
 
 Enklast dit: Konfigurera -> knappen "Öppna plugin-mappen".
 
-Mappen ligger där klienten installerade pluginen — vid en vanlig installation
-under %LOCALAPPDATA%, i en mapp döpt efter plugin:ens GUID, så den är inget man
-hittar av en slump.
+De låg tidigare i plugin-mappen, alltså där klienten installerade pluginen. Den
+mappen tömmer klienten varje gång pluginen uppdateras — uppmätt, två
+installationer i rad — så egna ord och autokorrigeringar försvann vid varje ny
+version, tyst. Nu ligger de utanför allt klienten äger. Fanns det listor på det
+gamla stället följer de med första gången den nya versionen startar; originalen
+ligger kvar där de låg.
 
-Är den mappen skrivskyddad, vilket den blir om man kör en portabel klient från
-Program Files, går ingenting att spara: ord du lägger till finns kvar tills
-klienten stängs och inte längre. Squiggle säger numera till om det — i
+Är mappen skrivskyddad går ingenting att spara: ord du lägger till finns kvar
+tills klienten stängs och inte längre. Squiggle säger till om det — i
 systemloggen, och i en ruta om det händer medan du har Konfigurera öppet, vilket
 är stunden då orden fortfarande står på skärmen att kopiera ut. Förut sa den
 ingenting alls, och de bara försvann.

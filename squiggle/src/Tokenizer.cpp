@@ -114,6 +114,16 @@ bool IsInWordApostrophe(const std::wstring& text, int i) {
     return IsLetter(text[static_cast<size_t>(i) - 1]) && IsLetter(text[static_cast<size_t>(i) + 1]);
 }
 
+// True for the zero in "ab0nemang": a single digit standing between two
+// letters is a finger slip and belongs to the word it sits in. Real numbers
+// never get this far -- IsIgnoredRun has already thrown away any run whose
+// digits sit at the edges or come in twos.
+bool IsInWordDigit(const std::wstring& text, int i) {
+    if (!IsDigit(text[static_cast<size_t>(i)])) return false;
+    if (i <= 0 || i + 1 >= static_cast<int>(text.size())) return false;
+    return IsLetter(text[static_cast<size_t>(i) - 1]) && IsLetter(text[static_cast<size_t>(i) + 1]);
+}
+
 // Strip leading/trailing characters that are not letters, so "hej," and "(hej)"
 // both reduce to "hej" while keeping the offsets pointing at the real word.
 void TrimToLetters(const std::wstring& text, Range& r) {
@@ -180,7 +190,8 @@ std::vector<Range> TokenizeForSpelling(const std::wstring& text) {
         // two letters survives, because that is a real part of "don't".
         int segStart = run.start;
         for (int j = run.start; j <= run.end(); ++j) {
-            const bool boundary = (j == run.end()) || (!IsLetter(text[j]) && !IsInWordApostrophe(text, j));
+            const bool boundary = (j == run.end()) || (!IsLetter(text[j]) && !IsInWordApostrophe(text, j) &&
+                                                       !IsInWordDigit(text, j));
             if (!boundary) continue;
 
             Range word{segStart, j - segStart};
