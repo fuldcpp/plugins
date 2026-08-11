@@ -1,0 +1,258 @@
+Babelfish 0.9 - chattöversättning för FulDC++
+=============================================
+
+Översätter det du skriver till engelska innan det skickas.
+
+Uppkallad efter Douglas Adams fisk: den sätts i örat och så förstår man alla.
+Man behöver inte känna till det för att använda den.
+
+
+Så använder du den
+------------------
+
+  Ctrl+G   i meddelanderutan     översätt till engelska och skicka
+  Ctrl+G   i chattfönstret       översätt raden du klickat på, bara åt dig
+  Enter                          skicka precis som du skrev
+  Shift+Enter, Ctrl+Enter        radbrytning (klientens egen, orörd)
+
+Det är hela grejen. Det finns inget läge att slå på och ingen indikator att läsa
+av, så det går inte att råka skicka en översättning till någon som väntade sig
+ditt eget språk. Att skriva på svenska är fortfarande vad Enter gör.
+
+Har du byggt ett meddelande över flera rader översätter Ctrl+G hela blocket i
+ett svep och behåller radbrytningarna.
+
+Inte i ett privat samtal, däremot. Klienten låter bara en plugin skriva en egen
+rad i en hubbs huvudchatt, aldrig i ett privat fönster, så ekot av ett privat
+meddelande hamnade förut i huvudchatten — rätt ord i ett fönster du inte menade
+dem för. Numera ekas privata meddelanden inte alls. Själva meddelandet berörs
+inte och går dit du skickade det.
+
+Medan översättningen hämtas visas ditt original i fönstret med en pil framför.
+Den raden är bara till dig och skickas ingenstans.
+
+
+Läsa vad andra skriver
+----------------------
+
+Klicka på en rad i chattfönstret och tryck Ctrl+G. Översättningen dyker upp
+strax under som en systemrad:
+
+  <mango> i can spell hashpipe too
+  *** mango: jag kan stava till hashpipa jag med
+
+Den raden finns bara i ditt fönster. Ingenting skickas, och den som skrev
+originalet märker ingenting.
+
+Det här går åt andra hållet mot allt annat: till språket du läser, inte till
+engelska. Bara raderna du ber om översätts — en aktiv hubb skulle kosta en
+förmögenhet annars, och du skulle ändå inte läsa det mesta.
+
+Det fungerar på meddelanden som kommit in medan pluginen varit igång, och de
+hundra senaste kommer den ihåg. Äldre rader går inte att spåra till sin hubb och
+lämnas i fred, med en notis om saken.
+
+Tänk på att en ny version startar om pluginen och tömmer det minnet, så allt som
+redan står i fönstret blir oöversättbart på en gång. Inget är trasigt; nästa
+meddelande som kommer in fungerar som vanligt.
+
+En sak att känna till: MyMemory kan inte lista ut vilket språk en rad är på, så
+den får veta att den ska vänta sig engelska. Det stämmer för det mesta i de här
+hubbarna och är fel för en italiensk rad, som då kommer tillbaka oöversatt.
+Claude, DeepL, Azure och Google räknar ut det själva, och är de du vill använda
+om folk du läser skriver på fler än ett språk.
+
+
+Installation
+------------
+
+Inget att ställa in. Pluginen fungerar direkt när den är installerad: den läser
+vilket språk Windows är på och översätter från det till engelska via MyMemory,
+som varken kräver konto eller nyckel.
+
+Gratisnivån räcker till ungefär 5 000 tecken per dygn och adress. Ett
+chattmeddelande är runt 60 tecken, alltså cirka 80 meddelanden om dagen. Lägger
+du till din e-postadress höjs det till 50 000, alltså ungefär 800:
+
+  /tr email du@exempel.se
+
+Adressen skickas bara till MyMemory, och bara som en del av
+översättningsförfrågan.
+
+
+Kommandon
+---------
+
+Skriv dem i vilket chattfönster som helst. /bf fungerar överallt där /tr gör
+det, och /tr help skriver ut hela listan utan att du behöver hit igen.
+
+  /tr help                lista alla kommandon
+  /tr status              vilken tjänst, vilket språk, hur mycket av dagens
+                          kvot som gått åt, hur ofta cachen träffar
+  /tr from de             byt språket du skriver på
+  /tr once <text>         översätt och skicka ett meddelande
+  /tr echo off            sluta visa originalet lokalt medan det hämtas
+  /tr log                 skriv pluginens senaste loggrader i det här fönstret
+  /tr limit 20000         tak i tecken per dygn; 0 stänger av det
+  /tr keep pölsa          översätt aldrig det här ordet (se nedan)
+  /tr cache clear         töm frascachen
+
+  /tr auto on             översätt allt på den här hubben utan Ctrl+G
+  /tr pm off              håll automatiskt läge borta från privata meddelanden
+
+Automatiskt läge är avstängt tills du ber om det, och är enklare att sätta i
+Konfigurera, där hubbarna du är inne på listas med var sin kryssruta.
+
+Du behöver inte komma ihåg något av det här. Öppna klientens pluginlista, markera
+Babelfish och tryck Konfigurera: språket är en lista med språknamn, och tjänsten,
+nyckeln och kryssrutorna finns där också. Hubbarna du är inne på listas med var
+sin kryssruta för automatiskt läge.
+
+
+Skriva på ett tredje språk
+--------------------------
+
+Pluginen utgår från att du skriver på det språk Windows är på. Skriver du ett
+enstaka meddelande på något annat sätter du språkkoden först och trycker Ctrl+G:
+
+  de: ich verstehe nicht
+
+Det ändrar vad du översätter *från*. Vad du översätter *till* är alltid
+engelska. Prefixet läses bara när en översättning faktiskt sker, så med vanligt
+Enter går det ut som vanlig text.
+
+Vill du ändra det permanent är Konfigurera-dialogen bättre än att försöka minnas
+koden.
+
+
+Använda en egen översättningstjänst
+-----------------------------------
+
+MyMemory är gratis men inte bäst. Har du en egen nyckel ger DeepL märkbart
+bättre svenska, och Claude klarar slang och tonfall bäst av alla.
+
+  /tr backend deepl
+  /tr key <din nyckel>
+
+Alternativ: mymemory, azure, deepl, google, claude. Azure vill dessutom ha
+regionen nyckeln hör till:
+
+  /tr backend azure
+  /tr key <din nyckel>
+  /tr region westeurope
+
+Ingen nyckel är inbyggd i pluginen, och ingen nyckel skickas någon annanstans än
+till den tjänst du valt. Det finns heller ingen tyst reservväg: misslyckas
+tjänsten du valt skickas dina egna ord oförändrade och orsaken hamnar i /tr log.
+
+/tr status slutar med den tjänst som senast faktiskt svarade, så du ser vad du
+betalar för i stället för vad du valt.
+
+
+Det här översätts aldrig
+------------------------
+
+  - allt som börjar med /, + eller ! (klient- och hubkommandon), utom /me
+  - magnetlänkar, TTH-hashar och filnamn
+  - meddelanden som redan ser ut som engelska
+  - allt under fyra tecken
+
+  - allt du lagt till med /tr keep
+
+Det sista är till för ord som kommer tillbaka *fel* i stället för oöversatta.
+"pölsa" blev "hot dog", och rättelsen "nej, pölsa" gick ut som "no, sausage" —
+tjänsten hade hittat "pølse", danska för korv, och var helt säker på sin sak.
+Ingenting såg trasigt ut, så det fanns ingen signal om att något var galet;
+meningen handlade bara om en annan måltid.
+
+Vilka ord som gör så går inte att veta i förväg. Listan är därför tänkt att
+fyllas på i efterhand, ett ord i taget, allteftersom de avslöjar sig:
+
+  /tr keep pölsa          lämna ordet i fred hädanefter
+  /tr keep -pölsa         låt det översättas igen
+  /tr keep                visa listan
+
+Ordet plockas ur meddelandet före sändning och sätts tillbaka efteråt, precis
+som redan sker med nick. Det måste vara minst tre tecken, och det matchar bara
+hela ord — att spara "pölsa" sparar inte "pölsan".
+
+Att ändra listan tömmer frascachen. Det måste den göra: en fras som redan
+översatts besvaras ur cachen innan något av det här körs, så utan det skulle
+ordet du just skyddat fortsätta komma tillbaka översatt och inställningen se
+trasig ut.
+
+Fyrateckensregeln gäller även när du trycker Ctrl+G. En mycket kort fras är en nästan
+säker träff på någons skräpbidrag i ett delat översättningsminne: "hej" kom en
+gång tillbaka som en hel mejlmall, och den skickades pliktskyldigt ut på hubben.
+Det är också därför varje svar numera kontrolleras innan det går iväg — allt som
+bär markup, eller är orimligt mycket längre än det du skrev, kastas och ditt
+original skickas i stället.
+
+
+När något går fel
+-----------------
+
+Ditt original skickas oförändrat. Pluginen sväljer aldrig tyst det du skrev.
+Tar dygnskvoten slut säger den till i chattfönstret i stället för att tyst gå
+tillbaka till svenska, och /tr log har orsaken.
+
+Lämnar tjänsten tillbaka texten oöversatt betyder det nästan alltid att den fått
+fel källspråk — polska skrivet medan pluginen fortfarande tror att du skriver
+svenska, till exempel. Den säger till en gång per session och pekar på hur du
+rättar det. Ingenting cachas i det läget, så en ändring av språket får verkan
+direkt.
+
+
+Kända begränsningar
+-------------------
+
+  - Automatiskt läge är avstängt tills du kryssar för en hubb. Det är det enda
+    läget som skickar utan att du bett om det, så börja någonstans där det inte
+    gör något.
+  - Alla fem tjänster har körts mot en riktig hubb för att skicka. Läsning är
+    prövad på Claude och Azure, på andras rader såväl som dina egna, men inte
+    på Google eller DeepL.
+  - Översättningskvaliteten på korta fraser och på /me-handlingar är vad
+    gratistjänsten ger. "dricker kaffe" kom tillbaka som "They drink coffee!".
+  - Nick plockas ur meddelandet innan det översätts och sätts tillbaka efteråt,
+    med hjälp av hubbens användarlista. Tappar tjänsten platshållaren skickas
+    ditt original i stället — ett meddelande som saknar någons namn är sämre än
+    ett som aldrig översattes.
+
+
+Filer
+-----
+
+  babelfish-cache.txt      fraser som redan översatts, så att de inte kostar
+                           något andra gången. Går bra att radera.
+  babelfish-settings.txt   ditt språk, tjänst, nyckel och resten.
+
+Båda ligger i pluginens egen mapp. Inställningarna sparas där, och inte bara i
+klientens egen Plugins.xml, av två skäl: en fil som skrivs i samma stund du
+ändrar något kan inte gå förlorad för att klienten dör innan den hinner spara,
+och API-nyckeln hamnar aldrig i Plugins.xml, som ligger i Dokument och med stor
+sannolikhet synkas till någons moln. Allt som inte är en nyckel speglas till
+klientens konfiguration också.
+
+Den mappen heter efter pluginens id och inte efter namnet, så den låg kvar när
+pluginen bytte namn från Translate. En translate-settings.txt som blivit över
+från tiden innan läses en gång, så att nyckeln du skrivit in överlever, och
+lämnas sedan i fred.
+
+När du installerar en ny version töms den mappen, och dessutom rensas pluginens
+inställningar i klientens egen konfiguration — båda pluginarna tappar allt de
+sparat. Efter en uppdatering kan du alltså behöva ställa in språket och kryssa
+för hubbarna igen.
+
+API-nycklarna är undantaget, och först från den här versionen. De ligger i
+Windows autentiseringshanterare, som tillhör Windows och inte klienten, och som
+lämnas i fred av allt klienten gör. Du kan se dem själv: Kontrollpanelen,
+Autentiseringshanteraren, Windows-autentiseringsuppgifter, uppräknade som
+"Babelfish/claude" och så vidare. Att ta bort en där är samma sak som att rensa
+den härifrån.
+
+
+Licens
+------
+
+GPLv3 eller senare. Se LICENSE.

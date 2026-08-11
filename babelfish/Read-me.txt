@@ -1,0 +1,259 @@
+Babelfish 0.9 - chat translation for FulDC++
+============================================
+
+Translates what you write into English before it is sent.
+
+Named after Douglas Adams's fish: you put it in your ear and everybody makes
+sense. You do not have to know that to use it.
+
+
+How you use it
+--------------
+
+  Ctrl+G   in the message box    translate into English and send
+  Ctrl+G   in the chat window     translate the line you clicked, for you only
+  Enter                          send exactly what you typed
+  Shift+Enter, Ctrl+Enter        line break (the client's own, left alone)
+
+That is the whole thing. There is no mode to switch on and no indicator to
+check, so there is no way to accidentally send a translation to somebody who was
+expecting your own language. Writing in your own language is still what Enter
+does.
+
+Built a message over several lines? Ctrl+G translates the whole block in one go
+and keeps the line breaks.
+
+While the translation is being fetched you will see your original in the window
+with an arrow in front of it. That is only for you - it is not sent anywhere.
+
+Not in a private conversation, though. The client only lets a plugin write a
+line of its own into a hub's main chat, never into a private window, so the echo
+of a private message used to turn up in main chat - the right words in a window
+you did not mean them for. There is no echo for private messages now. The
+message itself is unaffected and goes where you sent it.
+
+
+Reading what other people write
+-------------------------------
+
+Click a line in the chat window and press Ctrl+G. The translation appears just
+below it as a system line:
+
+  <mango> jag kan stava till hashpipa jag med
+  *** mango: i can spell hashpipe too
+
+That line is only in your window. Nothing is sent, and the person who wrote it
+is none the wiser.
+
+This goes the other way from everything else: into the language you read, not
+into English. Only the lines you ask for are translated - a busy hub would cost
+a fortune otherwise, and you would not read most of it anyway.
+
+It works on messages that arrived while the plugin was loaded, and remembers the
+last hundred. Older lines cannot be traced back to their hub and are left alone,
+with a note saying so.
+
+Note that installing a new version restarts the plugin and empties that memory,
+so every line already on screen becomes untranslatable at once. Nothing is
+wrong; the next message to arrive works normally.
+
+One thing to know: MyMemory cannot work out what language a line is in, so it is
+told to expect English. That is right for most of these hubs and wrong for an
+Italian line, which will simply come back untranslated. Claude, DeepL, Azure and
+Google all work it out themselves, and are the ones to use if the people you
+read write in more than one language.
+
+
+Setting up
+----------
+
+Nothing to set up. The plugin works the moment it is installed: it reads which
+language Windows is in and translates from that into English, using MyMemory's
+free service, which needs no account and no key.
+
+The free tier allows about 5 000 characters a day per address. A chat message is
+around 60 characters, so that is roughly 80 messages a day. Adding your e-mail
+address raises it to 50 000, or about 800:
+
+  /tr email you@example.com
+
+The address is only sent to MyMemory, and only as part of the translation
+request.
+
+
+Commands
+--------
+
+Type these in any chat window. /bf works everywhere /tr does, and /tr help
+prints the whole list without you having to come back here.
+
+  /tr help                list every command
+  /tr status              which backend, which language, how much of today's
+                          allowance is gone, how often the cache is hitting
+  /tr from de             change the language you write in
+  /tr once <text>         translate and send one message
+  /tr echo off            stop showing the original locally while it is fetched
+  /tr log                 print the plugin's recent log into this window
+  /tr limit 20000         daily character cap; 0 turns it off
+  /tr keep polsa          never translate this word (see below)
+  /tr cache clear         empty the phrase cache
+
+  /tr auto on             translate everything on this hub without Ctrl+G
+  /tr pm off              keep automatic mode out of private messages
+
+Automatic mode is off until you ask for it, and is easier to set from Configure,
+where the hubs you are on are listed with a tick box each.
+
+You do not have to remember any of this. Open the client's plugin list, select
+Babelfish and press Configure: the language is a list of language names in your
+own language, and the service, key and the two switches are there as well. The
+hubs you are on are listed there with a tick box each, for automatic mode.
+
+
+Writing in a third language
+---------------------------
+
+The plugin assumes you write in the language Windows is in. If you write one
+message in something else, put the language code in front of it and press
+Ctrl+G:
+
+  de: ich verstehe nicht
+
+This changes what you are translating *from*. What you translate *into* is
+always English. The prefix is only read when a translation is actually
+happening, so with plain Enter it is sent as ordinary text.
+
+To change it for good, use the Configure dialog rather than trying to remember
+the code.
+
+
+Using your own translation service
+----------------------------------
+
+MyMemory is free but not the best. If you have a key of your own, DeepL gives
+noticeably better Swedish, and Claude handles slang and tone best of all.
+
+  /tr backend deepl
+  /tr key <your key>
+
+Backends: mymemory, azure, deepl, google, claude. Azure also needs the region
+its key belongs to:
+
+  /tr backend azure
+  /tr key <your key>
+  /tr region westeurope
+
+No key is built into the plugin, and none is ever sent anywhere except to the
+service you chose. There is no quiet fallback either: if the service you picked
+fails, your own words are sent unchanged and the reason goes in /tr log.
+
+/tr status ends with the service that last actually answered, so you can tell
+what you are paying for rather than what you selected.
+
+
+What is never translated
+------------------------
+
+  - anything starting with /, + or ! (client and hub commands), except /me
+  - magnet links, TTH hashes and file names
+  - messages that already look like English
+  - anything under four characters
+
+  - anything you have added with /tr keep
+
+That last one is for words that come back wrong rather than not at all. "polsa"
+was translated as "hot dog", and then the correction "nej, polsa" went out as
+"no, sausage" - the service had found "polse", which is Danish for sausage, and
+was quite sure of itself. Nothing came back broken-looking, so there was no
+sign anything was wrong; the sentence was simply about a different meal.
+
+You cannot know in advance which words do this. So the list is meant to be
+added to afterwards, one word at a time, as each one gives itself away:
+
+  /tr keep polsa          leave it alone from now on
+  /tr keep -polsa         let it be translated again
+  /tr keep                show the list
+
+The word is taken out of the message before it is sent and put back afterwards,
+which is what already happens to nicknames. It has to be three characters or
+more, and it matches whole words only - keeping "polsa" does not keep "polsan".
+
+Changing the list empties the phrase cache. It has to: a phrase already
+translated is answered from the cache before any of this runs, so without that
+the word you just protected would keep coming back translated and the setting
+would look broken.
+
+The four-character rule applies even when you press Ctrl+G. A very short phrase is a
+near-certain hit on somebody's junk contribution in a shared translation memory:
+"hej" once came back as an entire e-mail template, and it was duly sent to the
+hub. That is also why every result is now checked before it goes out - anything
+carrying markup, or wildly longer than what you wrote, is thrown away and your
+original is sent instead.
+
+
+When something goes wrong
+-------------------------
+
+Your original is sent unchanged. The plugin never silently drops what you wrote.
+If the daily allowance runs out it says so in the chat window rather than
+quietly reverting to your own language, and /tr log will have the reason.
+
+If a service hands the text straight back untranslated, that almost always means
+it was told the wrong source language - Polish typed while the plugin still
+thinks you write Swedish, say. It says so once per session and points at the
+fix. Nothing is cached in that case, so correcting the language works
+immediately.
+
+
+Known limitations
+-----------------
+
+  - Automatic per-hub mode is off until you tick a hub. It is the only mode
+    that sends without you asking, so start somewhere harmless.
+  - All five services have been used against a live hub for sending. Reading
+    has been tried on Claude and Azure, on other people's lines as well as your
+    own, but not yet on Google or DeepL.
+  - Translation quality on short phrases and on /me actions is whatever the free
+    service gives you. "dricker kaffe" came back as "They drink coffee!".
+  - Nicks are taken out of a message before it is translated and put back after,
+    using the hub's user list. If a service loses the placeholder, your original
+    is sent instead - a message missing somebody's name is worse than one that
+    was never translated.
+
+
+Files
+-----
+
+  babelfish-cache.txt      phrases already translated, so they cost nothing
+                           the second time. Safe to delete.
+  babelfish-settings.txt   your language, service, key and the rest.
+
+Both live in the plugin's own folder. Settings are kept there, rather than only
+in the client's own Plugins.xml, for two reasons: a file written the moment you
+change something cannot be lost by a client that dies before it saves, and the
+API key stays out of Plugins.xml, which sits in your Documents folder and is
+quite likely being synced to somebody's cloud. Everything that is not a key is
+mirrored into the client's configuration as well.
+
+That folder is named after the plugin's id rather than its name, so it stayed
+where it was when the plugin was renamed from Translate. A translate-settings.txt
+left over from before is read once, so the key you typed in survives, and is then
+left alone.
+
+Installing a new version empties that folder, and it also clears the plugin's
+settings inside the client's own configuration - both plugins lose everything
+they had stored. So after an update you may have to set the language and tick
+the hubs again.
+
+API keys are the exception, and only since this version. They are kept in
+Windows Credential Manager, which belongs to Windows rather than to the client
+and is left alone by anything the client does. You can see them yourself:
+Control Panel, Credential Manager, Windows Credentials, listed as
+"Babelfish/claude" and so on. Deleting one there is the same as clearing it
+here.
+
+
+Licence
+-------
+
+GPLv3 or later. See LICENSE.

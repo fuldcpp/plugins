@@ -1,0 +1,19 @@
+# Byggresultat. Genereras av build.ps1 och hor inte hemma i historiken.
+build/
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.obj
+
+# Paketet byggs av pack.ps1 och laggs upp som en GitHub-release,
+# inte som en fil i repot.
+*.dcext
+
+# Visual Studio och Windows
+.vs/
+*.user
+Thumbs.db
+desktop.ini

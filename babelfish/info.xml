@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<dcext>
+	<ApiVersion>8</ApiVersion>
+	<UUID>{2f6b19c4-7a83-4d51-b0e7-9c48d3a1f652}</UUID>
+	<Name>Babelfish</Name>
+	<Version>1.0</Version>
+	<Author>Kaje</Author>
+	<Description>Translates what you write into English before it is sent. Ctrl+G in the message box translates and sends; plain Enter still sends exactly what you typed. Works out of the box with no account and no API key, and can use your own Azure, DeepL, Google or Claude key instead. Per-hub automatic mode is off until you ask for it.</Description>
+	<Website></Website>
+	<Plugin Platform="pe-x64">Babelfish-x64.dll</Plugin>
+	<Files>
+		<File>Las-mig.txt</File>
+		<File>Read-me.txt</File>
+	</Files>
+</dcext>

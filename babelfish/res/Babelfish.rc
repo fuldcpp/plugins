@@ -1,0 +1,80 @@
+#include <winres.h>
+#include "resource.h"
+
+#pragma code_page(65001)
+
+/* Every caption below is overwritten at WM_INITDIALOG from SettingsDialog.cpp,
+   which picks Swedish or English. The text kept here is only what a resource
+   editor shows while laying the dialog out; it is the widths that matter, and
+   they are sized for the longer of the two. */
+
+IDD_SETTINGS DIALOGEX 0, 0, 300, 362
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Babelfish"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Språk", IDC_GRP_LANG, 7, 4, 286, 54
+    LTEXT           "Du skriver på:", IDC_LBL_LANG, 14, 19, 70, 8
+    COMBOBOX        IDC_LANG, 88, 17, 196, 200,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "", IDC_LANGHINT, 14, 36, 272, 18
+
+    GROUPBOX        "Tjänst", IDC_GRP_SERVICE, 7, 62, 286, 122
+    LTEXT           "Tjänst:", IDC_LBL_BACKEND, 14, 77, 70, 8
+    COMBOBOX        IDC_BACKEND, 88, 75, 196, 120,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "API-nyckel:", IDC_LBL_APIKEY, 14, 96, 70, 8
+    EDITTEXT        IDC_APIKEY, 88, 94, 196, 13, ES_AUTOHSCROLL | ES_PASSWORD | WS_TABSTOP
+    LTEXT           "Azure-region:", IDC_LBL_REGION, 14, 114, 70, 8
+    EDITTEXT        IDC_REGION, 88, 112, 196, 13, ES_AUTOHSCROLL | WS_TABSTOP
+    LTEXT           "E-post:", IDC_LBL_EMAIL, 14, 132, 70, 8
+    EDITTEXT        IDC_EMAIL, 88, 130, 196, 13, ES_AUTOHSCROLL | WS_TABSTOP
+    LTEXT           "Tak per dygn:", IDC_LBL_LIMIT, 14, 150, 70, 8
+    EDITTEXT        IDC_LIMIT, 88, 148, 70, 13, ES_AUTOHSCROLL | ES_NUMBER | WS_TABSTOP
+    LTEXT           "", IDC_KEYHINT, 14, 166, 272, 16
+
+    GROUPBOX        "Automatiskt läge", IDC_GRP_AUTO, 7, 188, 286, 78
+    CONTROL         "", IDC_AUTOHUBS, "SysListView32",
+                    LVS_REPORT | LVS_SINGLESEL | LVS_NOSORTHEADER | LVS_SHOWSELALWAYS |
+                    WS_BORDER | WS_TABSTOP, 14, 201, 272, 46
+    LTEXT           "", IDC_AUTOHINT, 14, 250, 272, 14
+
+    CONTROL         "", IDC_PM, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 272, 284, 10
+    CONTROL         "", IDC_ECHO, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 284, 284, 10
+
+    LTEXT           "", IDC_CMDHINT, 7, 299, 286, 27
+    LTEXT           "", IDC_STATUS, 7, 329, 286, 8
+
+    PUSHBUTTON      "Töm cachen", IDC_CLEARCACHE, 7, 341, 66, 14
+    DEFPUSHBUTTON   "OK", IDOK, 189, 341, 50, 14
+    PUSHBUTTON      "Avbryt", IDCANCEL, 243, 341, 50, 14
+END
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION     VER_MAJOR, VER_MINOR, 0, 0
+    PRODUCTVERSION  VER_MAJOR, VER_MINOR, 0, 0
+    FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+    FILEFLAGS       0
+    FILEOS          VOS_NT_WINDOWS32
+    FILETYPE        VFT_DLL
+    FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      "kaje"
+            VALUE "FileDescription",  "Babelfish - chat translation for Direct Connect"
+            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "InternalName",     "Babelfish"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 kaje. GPLv3 or later."
+            VALUE "OriginalFilename", "Babelfish-x64.dll"
+            VALUE "ProductName",      "FulDC++ Babelfish"
+            VALUE "ProductVersion",   "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
