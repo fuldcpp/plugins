@@ -2,6 +2,21 @@
     "formatVersion":  1,
     "plugins":  [
                     {
+                        "uuid":  "{2f6b19c4-7a83-4d51-b0e7-9c48d3a1f652}",
+                        "name":  "Babelfish",
+                        "version":  "1.0",
+                        "apiVersion":  8,
+                        "author":  "Kaje",
+                        "description":  "Translates what you write into English before it is sent. Ctrl+G in the message box translates and sends; plain Enter still sends exactly what you typed. Works out of the box with no account and no API key, and can use your own Azure, DeepL, Google or Claude key instead. Per-hub automatic mode is off until you ask for it.",
+                        "website":  "",
+                        "platforms":  [
+                                          "pe-x64"
+                                      ],
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/babelfish-v1.0/Babelfish.dcext",
+                        "sha256":  "687bf44d8117df5bae1fa7435769f8522b89eaee8f5074072fdad26931e1ee0d",
+                        "size":  255640
+                    },
+                    {
                         "uuid":  "{f83c6829-3c25-4b32-a6a5-63d57b59a18d}",
                         "name":  "Chat plugin",
                         "version":  "1",
@@ -171,7 +186,7 @@
                     {
                         "uuid":  "{8f3a7c21-5d94-4e0b-9a6f-2c1b8e7d4a35}",
                         "name":  "Squiggle",
-                        "version":  "2.4",
+                        "version":  "2.7",
                         "apiVersion":  8,
                         "author":  "kaje",
                         "description":  "Spell checking in chat: a red wavy underline under misspelled words as you type, right-click for suggestions. Several languages at once, Swedish and English interface.",
@@ -179,9 +194,9 @@
                         "platforms":  [
                                           "pe-x64"
                                       ],
-                        "url":  "https://github.com/fuldcpp/plugins/releases/download/squiggle-v2.4/Squiggle.dcext",
-                        "sha256":  "1e21855ae78fb8be579c4abcb536a673bbdfe6feff921ad0c662c471e8af2097",
-                        "size":  155786
+                        "url":  "https://github.com/fuldcpp/plugins/releases/download/squiggle-v2.7/Squiggle.dcext",
+                        "sha256":  "b7a9f2ac65e6812cb7818a133ba78633d04402c8d88a769e63f95cd2b45e2511",
+                        "size":  170836
                     }
                 ]
 }
