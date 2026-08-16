@@ -5,7 +5,7 @@
 <dcext>
   <UUID>{b6bbc82c-dadf-447d-94c2-c1bc274e2e76}</UUID>
   <Name>Protocol Analyzer</Name>
-  <Version>1.00</Version>
+  <Version>1.01</Version>
   <ApiVersion>8</ApiVersion>
   <Author>iceman50</Author>
   <Description>Protocol analyzer for ADC and NMDC.</Description>
